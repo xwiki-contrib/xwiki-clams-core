@@ -27,7 +27,7 @@
   <parent>
     <groupId>org.curriki</groupId>
     <artifactId>curriki-plugins</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>2.0-SNAPSHOT</version>
   </parent>
   <artifactId>curriki-plugin-asset</artifactId>
   <name>XWiki Products - Curriki - Plugins - Asset Plugin</name>
