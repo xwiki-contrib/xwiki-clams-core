@@ -45,10 +45,18 @@
     <!-- Versions of XWiki dependencies used in Curriki modules -->
     <platform.tools.xar-handler.version>1.9</platform.tools.xar-handler.version>
     <platform.tools.xar-plugin.version>1.13</platform.tools.xar-plugin.version>
-    <platform.core.version>2.3</platform.core.version>
-    <platform.web.version>2.3</platform.web.version>
+    <platform.core.version>2.3.2</platform.core.version>
+    <platform.web.version>2.3.2</platform.web.version>
     <platform.plugins.invitationmanager.version>1.0.1</platform.plugins.invitationmanager.version>
     <platform.plugins.spacemanager.version>1.1.1</platform.plugins.spacemanager.version>
+    <platform.activitystream.version>1.10</platform.activitystream.version>
+    <platform.jodatime.version>1.3</platform.jodatime.version>    
+    <platform.plugin.mailsender.version>1.14</platform.plugin.mailsender.version>
+    <platform.scheduler.version>1.19</platform.scheduler.version>
+    <platform.plugin.skinx.version>1.13.1</platform.plugin.skinx.version>
+    <platform.tag.version>1.11</platform.tag.version>
+    <platform.watchlist.version>1.28</platform.watchlist.version>
+    <platform.tool.configuration.version>1.40</platform.tool.configuration.version>
   </properties>
   <profiles>
     <profile>

@@ -35,15 +35,61 @@
   <description>The standard Curriki WAR</description>
   <dependencies>
     <dependency>
-      <groupId>com.xpn.xwiki.products</groupId>
-      <artifactId>xwiki-enterprise-web</artifactId>
+      <groupId>com.xpn.xwiki.platform</groupId>
+      <artifactId>xwiki-web-standard</artifactId>
       <version>${platform.web.version}</version>
       <type>war</type>
     </dependency>
     <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-watchlist</artifactId>
+      <version>${platform.watchlist.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.5.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-jodatime</artifactId>
+      <version>${platform.jodatime.version}</version>
+    </dependency>    
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-scheduler</artifactId>
+      <version>${platform.scheduler.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-mailsender</artifactId>
+      <version>${platform.plugin.mailsender.version}</version>
+    </dependency>   
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-skinx</artifactId>
+      <version>${platform.plugin.skinx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-tag</artifactId>
+      <version>${platform.tag.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.xpn.xwiki.platform.plugins</groupId>
+      <artifactId>xwiki-plugin-invitationmanager</artifactId>
+      <version>${platform.plugins.invitationmanager.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-lucene</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>${pom.version}</version>
     </dependency>
     <!-- We shouldn't need this dependency but Surefire plugin v2.3 fails with a "Null" if it's
          not defined. Seems to be fixed in the latest Surefire plugin in Maven's trunk so when
@@ -55,29 +101,24 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-	<groupId>org.curriki</groupId>
-	<artifactId>curriki-plugin-spacemanager</artifactId>
-	<version>1.0-SNAPSHOT</version>
+      <groupId>org.curriki</groupId>
+      <artifactId>curriki-plugin-spacemanager</artifactId>
+      <version>${pom.version}</version>
     </dependency>
     <dependency>
-	<groupId>com.xpn.xwiki.platform.plugins</groupId>
-	<artifactId>xwiki-plugin-invitationmanager</artifactId>
-	<version>${platform.plugins.invitationmanager.version}</version>
+    <groupId>org.curriki</groupId>
+      <artifactId>curriki-plugin-activitystream</artifactId>
+      <version>${pom.version}</version>
     </dependency>
     <dependency>
-	<groupId>org.curriki</groupId>
-	<artifactId>curriki-plugin-activitystream</artifactId>
-	<version>1.0-SNAPSHOT</version>
+      <groupId>org.curriki</groupId>
+      <artifactId>curriki-plugin-curriki</artifactId>
+      <version>${pom.version}</version>
     </dependency>
     <dependency>
-	<groupId>org.curriki</groupId>
-	<artifactId>curriki-plugin-curriki</artifactId>
-	<version>1.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-	<groupId>org.curriki</groupId>
-	<artifactId>curriki-plugin-servlet</artifactId>
-	<version>1.0-SNAPSHOT</version>
+      <groupId>org.curriki</groupId>
+      <artifactId>curriki-plugin-servlet</artifactId>
+      <version>${pom.version}</version>
     </dependency>
   </dependencies>
   <build>

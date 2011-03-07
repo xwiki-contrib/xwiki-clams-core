@@ -1014,20 +1014,16 @@ public class Asset extends CurrikiDocument {
 
         // Let's choose a nice name for the page
         String prettyName = context.getWiki().clearName(name, true, true, context);
-        assetDoc.rename(space + "." + context.getWiki().getUniquePageName(space, prettyName.trim(), context), new ArrayList<String>(), context);
+        //rename(space + "." + context.getWiki().getUniquePageName(space, prettyName.trim(), context), new ArrayList<String>());
+        this.doc = assetDoc.copyDocument(space + "." + context.getWiki().getUniquePageName(space, prettyName.trim(), context),context);
+        context.getWiki().deleteDocument(assetDoc, context);
 
         applyRightsPolicy();
 
         List<String> params = new ArrayList<String>();
         params.add(assetDoc.getStringValue(Constants.ASSET_CLASS_CATEGORY));
-        try {
-          save(context.getMessageTool().get("curriki.comment.finishcreatingsubasset", params));
-        } catch (Exception e) {
-          // THIS IS A HACK to fix creating an attachment based asset with core 2.x
-          // we need to find the real issue
-          // retry the saving as a temp workaround
-          save(context.getMessageTool().get("curriki.comment.finishcreatingsubasset", params));
-        }
+        save(context.getMessageTool().get("curriki.comment.finishcreatingsubasset", params));
+
         if (isCollection()) {
             RootCollectionCompositeAsset root = CollectionSpace.getRootCollection(space, context);
             root.addSubasset(this.getFullName());

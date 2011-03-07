@@ -51,17 +51,17 @@
     <dependency>
       <groupId>com.xpn.xwiki.platform.plugins</groupId>
       <artifactId>xwiki-plugin-mailsender</artifactId>
-      <version>1.14</version>
+      <version>${platform.plugin.mailsender.version}</version>
     </dependency>
     <dependency>
       <groupId>com.xpn.xwiki.platform.plugins</groupId>
       <artifactId>xwiki-plugin-activitystream</artifactId>
-      <version>1.6</version>
+      <version>${platform.activitystream.version}</version>
     </dependency>
     <dependency>
       <groupId>com.xpn.xwiki.platform.plugins</groupId>
       <artifactId>xwiki-plugin-spacemanager</artifactId>
-      <version>1.1.1</version>
+      <version>${platform.plugins.spacemanager.version}</version>
     </dependency>
   </dependencies>
 </project>      
