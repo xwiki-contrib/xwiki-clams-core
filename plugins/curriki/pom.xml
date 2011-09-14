@@ -37,7 +37,7 @@
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-asset</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.xpn.xwiki.platform.plugins</groupId>
@@ -47,23 +47,23 @@
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-spacemanager</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
 <!--
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-licence</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-framework</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-mimetype</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
 -->
   </dependencies>

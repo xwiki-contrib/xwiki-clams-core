@@ -37,12 +37,12 @@
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-curriki</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.curriki</groupId>
       <artifactId>curriki-plugin-asset</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
