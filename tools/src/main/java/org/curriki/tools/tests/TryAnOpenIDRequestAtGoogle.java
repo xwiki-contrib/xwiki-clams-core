@@ -1,5 +1,6 @@
 package org.curriki.tools.tests;
 
+import com.sun.crypto.provider.SunJCE;
 import org.apache.commons.httpclient.ConnectTimeoutException;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpClientError;
@@ -11,6 +12,9 @@ import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.SecureProtocolSocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import sun.security.jgss.wrapper.SunNativeProvider;
+import sun.security.provider.Sun;
+import sun.security.rsa.SunRsaSign;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLContext;
@@ -29,29 +33,30 @@ import java.security.cert.X509Certificate;
 
 public class TryAnOpenIDRequestAtGoogle {
 
-    private static final Log LOG = LogFactory.getLog(EasyX509TrustManager.class);
-    private static String merchant="669895943580289", key="Ea0jLLapBsYxX2hRvapowg", host="hoplahup.homeip.net";
+    //private static final Log LOG = LogFactory.getLog(EasyX509TrustManager.class);
+    //private static String merchant="669895943580289", key="Ea0jLLapBsYxX2hRvapowg", host="hoplahup.homeip.net";
 
     public static void main(String[] args) {
         Object o = null;
         String error = null;
         try {
-            HttpClient client = new HttpClient();
-            URL checkoutURL = new URL("https://checkout.google.com/api/checkout/v2/reports/Merchant/MERCHANT_ID");
+            System.out.println("java.home is " + System.getProperty("java.home"));
+            /* HttpClient client = new HttpClient();
+            URL checkoutURL = new URL("https://www.google.com/accounts/o8/ud");//new URL("https://checkout.google.com/api/checkout/v2/reports/Merchant/MERCHANT_ID");
             Protocol myhttps = new Protocol("https", new EasySSLProtocolSocketFactory(), 443);
-            client.getHostConfiguration().setHost("checkout.google.com", 443, myhttps);
-            client.getParams().setAuthenticationPreemptive(true);
-            client.getState().setCredentials(
-                    new AuthScope(checkoutURL.getHost(), checkoutURL.getPort(), AuthScope.ANY_REALM),
-                        new UsernamePasswordCredentials(merchant, key));
+            client.getHostConfiguration().setHost("www.google.com", 443, myhttps);
+            //client.getParams().setAuthenticationPreemptive(true);
+            //client.getState().setCredentials(
+            //        new AuthScope(checkoutURL.getHost(), checkoutURL.getPort(), AuthScope.ANY_REALM),
+            //            new UsernamePasswordCredentials(merchant, key));
 
             GetMethod get = new GetMethod(checkoutURL.toExternalForm());
             client.executeMethod(get);
             System.out.println("Status " + get.getStatusCode() + " " + get.getStatusText());
             System.out.println("Obtained: " + get.getResponseBodyAsString());
-
-            //URL url = new URL("https://checkout.google.com/api/checkout/v2/reports/Merchant/MERCHANT_ID");
-            //o = url.getContent();
+*/
+            URL url = new URL("https://checkout.google.com/api/checkout/v2/reports/Merchant/MERCHANT_ID");
+            o = url.getContent();
         } catch(Exception ex) {
             StringWriter w = new StringWriter();
             ex.printStackTrace(new PrintWriter(w));
@@ -154,14 +159,14 @@ public static class EasySSLProtocolSocketFactory implements SecureProtocolSocket
 
     private static SSLContext createEasySSLContext() {
         try {
-            SSLContext context = SSLContext.getInstance("SSL");
+            SSLContext context = SSLContext.getInstance("SSL", new SunJCE());
             context.init(
               null,
               new TrustManager[] {new EasyX509TrustManager(null)},
               null);
             return context;
         } catch (Exception e) {
-            LOG.error(e.getMessage(), e);
+            e.printStackTrace();
             throw new HttpClientError(e.toString());
         }
     }
@@ -325,10 +330,10 @@ static class EasyX509TrustManager implements X509TrustManager
      * @see javax.net.ssl.X509TrustManager#checkServerTrusted(X509Certificate[],String authType)
      */
     public void checkServerTrusted(X509Certificate[] certificates,String authType) throws CertificateException {
-        if ((certificates != null) && LOG.isDebugEnabled()) {
-            LOG.debug("Server certificate chain:");
+        if ((certificates != null)) {
+            System.err.println("Server certificate chain:");
             for (int i = 0; i < certificates.length; i++) {
-                LOG.debug("X509Certificate[" + i + "]=" + certificates[i]);
+                System.err.println("X509Certificate[" + i + "]=" + certificates[i]);
             }
         }
         if ((certificates != null) && (certificates.length == 1)) {
