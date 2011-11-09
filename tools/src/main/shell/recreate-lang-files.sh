@@ -9,13 +9,13 @@
 ##
 ##   It is meant to work with mod_rewrite's
 ##    
-
-
+##
 DIR=`which $0`
 cd `dirname $DIR`
 . ./settings.sh
-
-langs=`./fetchlanguages.sh`
+##
+## langs=`./fetchlanguages.sh`
+langs=`cat languages.txt`
 TMP=`mktemp -d ./TMPXXXXXX`
 cd $TMP
 for l in $langs ; do
