@@ -31,4 +31,5 @@ done
 rsync -avc ./ ../
 cd ..
 chmod ugo+r *.js
+chmod ugo+x .
 rm -r $TMP
