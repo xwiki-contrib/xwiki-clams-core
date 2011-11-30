@@ -1,0 +1,83 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Monitor Curriki</title>
+    <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="js/excanvas.js"></script><![endif]-->
+    <script language="javascript" type="text/javascript" src="js/jquery.min.js"></script>
+    <script language="javascript" type="text/javascript" src="js/jquery.jqplot.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="jquery.jqplot.css" />
+</head>
+<body style="width:99%">
+<h1>Monitor Curiki</h1>
+
+<div id="chartdiv" style="height:100px;width:99%;"></div>
+
+<script type="text/javascript" src="topsCpuLoad.js"></script>
+<script type="text/javascript" src="js/logRoller.js"></script>
+<script type="text/javascript">
+    var duration = 60, granularity = 5;
+    $.jqplot('chartdiv',  [cpuLoad],
+        { title:'Load',
+            axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:100}},
+            series:[{color:'#5FAB78', title: "Appserv CPU"}]
+        });
+    $('#chartdiv').click(function(evt) {
+        console.log("Mouse down: ", evt.offsetX-26, 82-evt.offsetY);
+        var p = Math.round(0.5+60*(evt.offsetX-26)/$('#chartdiv').width());
+        console.log("Would position to " + p);
+        positionWindows(p);
+    });
+
+    function positionWindows(p) {
+        p = Math.round(p/granularity)*granularity;
+        jQuery.ajax({ context:document.body,
+                    url: "topsHeader_" + p + ".txt",
+                    success: function(data) {
+                      //console.log("Data received: " + data);
+                      $('#topHeader').html(data);
+                    }});
+        frames['apacheLogs'].Curriki.monitor.rollToTime(Math.round(p));
+        frames['appservLogs'].Curriki.monitor.rollToTime(Math.round(p));
+        frames['threads'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
+        frames['mysql'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
+    }
+
+
+    $('document').ready( function() {
+                positionWindows(0);
+            }
+    );
+</script>
+
+<div style="font-size:small; padding:0.2em; margin: 0.2em ">
+    <pre id="topHeader">Loading...</pre>
+</div>
+
+<hr>
+<h3>Apache Log</h3>
+<iframe style="width:90%; height:10em" src="apacheLogs.html" name="apacheLogs">
+</iframe>
+
+
+
+<hr>
+<h3>Appserv Log</h3>
+<iframe style="width:90%; height:10em" src="appservLogs.html" name="appservLogs">
+</iframe>
+
+
+<hr>
+<h3>Appserv Threads</h3>
+<iframe style="width:90%; height:10em " src="threads_0.html" name="threads">
+</iframe>
+
+
+<hr>
+<h3>MySQL queries</h3>
+<iframe style="width:90%; height:10em " src="mysqlProcesses_0.html" name="mysql">
+</iframe>
+
+
+</body>
+</html>
