@@ -23,7 +23,8 @@ public class MonitorWebRenderer {
 
     private static final float intervalBetweenTops = 5000;
     private static DateFormat apacheLogDf = new SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z"),
-        appservLogDf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        appservLogDf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"),
+        directoryNameDf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS_Z");
         // example 2011-11-28T13:13:11.901-0800
     private static NumberFormat decimals = new DecimalFormat("######.##"),
         integers = new DecimalFormat("#####");
@@ -62,6 +63,10 @@ public class MonitorWebRenderer {
             FileUtils.copyURLToFile(clz.getResource("monitorResources/js/" + fileName),
                     new File("output/js/" + fileName));
         }
+
+        // rename output to a directory with proper date
+        new File("output").renameTo(new File(directoryNameDf.format(start)));
+
     }
 
     public MonitorWebRenderer(long start, long end, String pidAsString){

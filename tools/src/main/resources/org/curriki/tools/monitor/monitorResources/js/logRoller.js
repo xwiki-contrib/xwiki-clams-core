@@ -27,7 +27,7 @@ Curriki.monitor.jumpToTimePage =  function(fromStartInSeconds, stepLength) {
 // =================================================================
     console.log("stepLength = " + stepLength);
     var fileNum = Math.round(fromStartInSeconds/stepLength);
-    var fileName = baseLocation.replace(/_[0-9]+/,"_"+fileNum+"");
+    var fileName = baseLocation.replace(/_[0-9]+\.html/,"_"+fileNum+".html");
     console.log("Would jump to time " + fromStartInSeconds + " i.e. file " + fileName + ".");
     window.location.href=fileName;
 }

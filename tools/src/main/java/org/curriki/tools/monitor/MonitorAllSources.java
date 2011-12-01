@@ -27,6 +27,7 @@ public class MonitorAllSources {
 
     private MonitorAllSources(String processNum) throws Exception {
         baseDir = new File(System.getProperty("user.dir"));
+        new File(baseDir, "output").mkdirs();
         errorStream = new FileOutputStream("output/errors.log");
 
         try {
