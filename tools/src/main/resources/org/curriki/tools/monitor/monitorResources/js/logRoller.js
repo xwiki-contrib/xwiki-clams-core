@@ -33,3 +33,14 @@ Curriki.monitor.jumpToTimePage =  function(fromStartInSeconds, stepLength) {
 }
 
 
+Curriki.monitor.foldUnfold = function(elt) {
+	console.log('Fold unfold on ', elt);
+	var divElt = null;
+	for(i=0; i<elt.childNodes.length; i++)
+		if(elt.childNodes[i].tagName == 'DIV') divElt = elt.childNodes[i];
+	var display = divElt.style.display;
+	if(display=='block') divElt.style.display = 'none';
+	if(display=='none') divElt.style.display = 'block';
+}
+
+

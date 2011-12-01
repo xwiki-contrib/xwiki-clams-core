@@ -289,19 +289,28 @@ public class MonitorWebRenderer {
                             "    <script type='text/javascript' src='js/logRoller.js'></script>\n" +
                             "</head><body><pre>");
                     pw.println(line);
-                    pw.println("</pre>\n<ul><li><pre>");
+                    pw.println("</pre>\n<ul><li onclick='Curriki.monitor.foldUnfold(this);'><pre>");
                     int count = 0;
+                    String d = "";
                     while((line = in.readLine())!=null && !line.startsWith(" concurrent-mark-sweep perm gen total")) {
                         if(line.length()==0 && count<2) continue;
-                        if(count<2) pw.println(line);
+                        if(count==3) {
+                            pw.print("</pre><div style='display:none'><pre>");
+                            d="</div>";
+                        }
+                        pw.println(line);
                         count++;
                         if(line.trim().length()==0) {
+                            pw.write("</pre>");
+                            pw.write(d);
+                            pw.write("</li>\n<li onclick='Curriki.monitor.foldUnfold(this);'><pre>");
                             count = 0;
-                            pw.write("</pre></li><li><pre>");
+                            d="";
                         }
                     }
-                    pw.println(line); pw.println("</pre></li></ul>");
-                    pw.println("</pre></body></html>");
+                    pw.println(line);
+                    pw.println("</pre>"+d+"</li></ul>");
+                    pw.println("</body></html>");
                     pw.flush(); pw.close();
                     threadDumpNum++;
                 }

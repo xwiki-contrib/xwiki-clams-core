@@ -6,7 +6,7 @@
     <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="js/excanvas.js"></script><![endif]-->
     <script language="javascript" type="text/javascript" src="js/jquery.min.js"></script>
     <script language="javascript" type="text/javascript" src="js/jquery.jqplot.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="jquery.jqplot.css" />
+    <link rel="stylesheet" type="text/css" href="js/jquery.jqplot.min.css" />
 </head>
 <body style="width:99%">
 <h1>Monitor Curiki</h1>
@@ -19,26 +19,40 @@
 <script type="text/javascript" src="js/logRoller.js"></script>
 <script type="text/javascript">
     var duration = 60, granularity = 5;
+
+    function clickedOnPlot(ev, gridpos, datapos, neighbor, plot) {
+		 var x = datapos.xaxis, y = datapos.yaxis;
+		 x = Math.round(x/granularity)*granularity;
+         console.log("click!", x);
+        positionWindows(x);
+    }
+    $.jqplot.eventListenerHooks.push(['jqplotClick', clickedOnPlot]);
+
     $.jqplot('chartdiv',  [cpuLoad],
         { title:'Load',
             axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:^maxCpuLoad^}},
             series:[{color:'#5FAB78', title: "Appserv CPU"}]
         });
-    $('#chartdiv').click(function(evt) {
+    //
+    /* $('#chartdiv').click(function(evt) {
         console.log("Mouse down: ", evt.offsetX-26, 82-evt.offsetY);
         var p = Math.round(0.5+60*(evt.offsetX-26)/$('#chartdiv').width());
         console.log("Would position to " + p);
         positionWindows(p);
-    });
+    }); */
 
-    function positionWindows(p) {
-        p = Math.round(p/granularity)*granularity;
+    function adjustTops(p) {
         jQuery.ajax({ context:document.body,
                     url: "topsHeader_" + p + ".txt",
                     success: function(data) {
                       //console.log("Data received: " + data);
                       $('#topHeader').html(data);
                     }});
+    }
+
+    function positionWindows(p) {
+        p = Math.round(p/granularity)*granularity;
+        adjustTops(p);
         frames['apacheLogs'].Curriki.monitor.rollToTime(Math.round(p));
         frames['appservLogs'].Curriki.monitor.rollToTime(Math.round(p));
         frames['threads'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
@@ -47,7 +61,7 @@
 
 
     $('document').ready( function() {
-                positionWindows(0);
+                adjustTops(0);
             }
     );
 </script>
