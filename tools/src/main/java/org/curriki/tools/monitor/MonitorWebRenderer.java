@@ -1,11 +1,14 @@
 package org.curriki.tools.monitor;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.helpers.AbsoluteTimeDateFormat;
 
 import java.io.*;
 import java.text.*;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +19,7 @@ public class MonitorWebRenderer {
     private File baseDir = new File("output");
     private long start, end;
     private String pidAsString;
+    private float maxCpuLoad = 0;
 
     private static final float intervalBetweenTops = 5000;
     private static DateFormat apacheLogDf = new SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z"),
@@ -24,14 +28,40 @@ public class MonitorWebRenderer {
     private static NumberFormat decimals = new DecimalFormat("######.##"),
         integers = new DecimalFormat("#####");
 
-
     public static void main(String[] args) throws Exception {
-        MonitorWebRenderer mwr = new MonitorWebRenderer(apacheLogDf.parse("28/Nov/2011:13:13:13 -0800").getTime(),
-                apacheLogDf.parse("28/Nov/2011:13:14:12 -0800").getTime(), "24521");
-        mwr.topParser.parse();
-        mwr.apacheLogParser.parse();
-        mwr.appservLogParser.parse();
-        mwr.mySQLProcessListSplitter.parse();
+        long end = System.currentTimeMillis();
+        long start = end - 60*1000;
+        MonitorWebRenderer mwr = new MonitorWebRenderer(start, end, args[0]);
+        try {
+            mwr.topParser.parse();
+        } catch (Exception e) { e.printStackTrace(); }
+        try {
+            mwr.apacheLogParser.parse();
+        } catch (Exception e) { e.printStackTrace(); }
+        try {
+            mwr.appservLogParser.parse();
+        } catch (Exception e) { e.printStackTrace(); }
+        try {
+            mwr.mySQLProcessListSplitter.parse();
+        } catch (Exception e) { e.printStackTrace(); }
+
+        // create home page
+        Map<String,String> values = new HashMap<String,String>();
+        values.put("startDate", apacheLogDf.format(new Date(start)));
+        values.put("endDate", apacheLogDf.format(new Date(end)));
+        values.put("maxCpuLoad", integers.format(Math.round(mwr.maxCpuLoad/100)*100+100));
+        Class clz = MonitorWebRenderer.class;
+        Util.substituteStream(
+                clz.getResourceAsStream("monitorResources/monitor-curriki-template.html"),
+                new FileOutputStream("output/index.html"), values);
+
+        // finally copy all included files
+        new File("output/js").mkdirs();
+        for(String fileName: Arrays.asList("excanvas.min.js", "jquery.jqplot.min.css",
+                "jquery.jqplot.min.js", "jquery.min.js", "logRoller.js")) {
+            FileUtils.copyURLToFile(clz.getResource("monitorResources/js/" + fileName),
+                    new File("output/js/" + fileName));
+        }
     }
 
     public MonitorWebRenderer(long start, long end, String pidAsString){
@@ -52,6 +82,19 @@ public class MonitorWebRenderer {
 
 
     private static class Util {
+
+        private static void substituteStream(InputStream in, OutputStream out, Map<String, String> values) throws IOException {
+            String[] pieces = IOUtils.toString(in, "utf-8").split("\\^");
+            Writer outW = new OutputStreamWriter(out, "utf-8");
+            for(String piece: pieces) {
+                String v = values.get(piece);
+                if(v==null) v = piece;
+                outW.write(v);
+            }
+            outW.flush(); outW.close();
+            in.close();
+        }
+
         private static String readTillStartsWith(LineNumberReader reader, String prefix, PrintWriter putLinesIn) throws IOException {
             String read;
             while((read = reader.readLine())!=null) {
@@ -150,6 +193,7 @@ public class MonitorWebRenderer {
             if(cpuLoad==null) return;
             cpuLoad = cpuLoad.substring(0, cpuLoad.length()-1);
             float load = decimals.parse(cpuLoad).floatValue();
+            if(load > maxCpuLoad) maxCpuLoad = load;
             cpuLoads[count] = load;
         }
     }
@@ -162,8 +206,11 @@ public class MonitorWebRenderer {
             PrintWriter out = Util.makePrintWriter("output/apacheLogs.html");
             String[] pageTemplateBits =
                     IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/apacheLogsTemplate.html"), "utf-8")
-                            .split("«|»");
-            if(! ("log".equals(pageTemplateBits[1]) && "date".equals(pageTemplateBits[3]) && "data".equals(pageTemplateBits[5]) )) {
+                            .split("\\^");
+            if(pageTemplateBits.length != 7 || ! ("log".equals(pageTemplateBits[1]) && "date".equals(pageTemplateBits[3]) && "data".equals(pageTemplateBits[5]) )) {
+                System.err.println("template was: " + IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/apacheLogsTemplate.html"), "utf-8"));
+                System.err.println("which split to: ");
+                for(String bit :  pageTemplateBits) System.err.println("- " + bit);
                 throw new IllegalStateException("Template is malformed, expected sequence log, date, data.");
             }
             out.println(pageTemplateBits[0]);
@@ -219,8 +266,11 @@ public class MonitorWebRenderer {
             PrintWriter out = Util.makePrintWriter("output/appservLogs.html");
             String[] pageTemplateBits =
                     IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/appservLogsTemplate.html"), "utf-8")
-                            .split("«|»");
+                            .split("\\^");
             if(! ("log".equals(pageTemplateBits[1]) && "date".equals(pageTemplateBits[3]) && "data".equals(pageTemplateBits[5]) )) {
+                System.err.println("template was: " + IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/apacheLogsTemplate.html"), "utf-8"));
+                System.err.println("which split to: ");
+                for(String bit :  pageTemplateBits) System.err.println("- " + bit);
                 throw new IllegalStateException("Template is malformed, expected sequence log, date, data.");
             }
             out.println(pageTemplateBits[0]);
@@ -242,6 +292,7 @@ public class MonitorWebRenderer {
                     pw.println("</pre>\n<ul><li><pre>");
                     int count = 0;
                     while((line = in.readLine())!=null && !line.startsWith(" concurrent-mark-sweep perm gen total")) {
+                        if(line.length()==0 && count<2) continue;
                         if(count<2) pw.println(line);
                         count++;
                         if(line.trim().length()==0) {
@@ -314,8 +365,13 @@ public class MonitorWebRenderer {
         }
         private void parse() throws Exception {
             pageTemplateBits = IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/mysqlProcesses_x_Template.html"), "utf-8")
-                    .split("«|»");
-            if(! ("log".equals(pageTemplateBits[1]) && "date".equals(pageTemplateBits[3]) )) {
+                    .split("\\^");
+            if(! (pageTemplateBits.length==5 && "log".equals(pageTemplateBits[1]) && "date".equals(pageTemplateBits[3]) )) {
+                System.err.println("Faulty template: " + IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/mysqlProcesses_x_Template.html"), "utf-8"));
+                System.err.println("template was: " + IOUtils.toString(this.getClass().getResourceAsStream("monitorResources/apacheLogsTemplate.html"), "utf-8"));
+                System.err.println("which split to: ");
+                int i=0;
+                for(String bit :  pageTemplateBits) System.err.println("- " + (i++) + " " +  bit);
                 throw new IllegalStateException("Template is malformed, expected sequence log, date.");
             }
 

@@ -1,7 +1,6 @@
 package org.curriki.tools.monitor;
 
 import org.apache.commons.exec.*;
-import org.apache.tools.ant.Project;
 
 import java.io.*;
 import java.util.logging.StreamHandler;
@@ -15,7 +14,6 @@ public class MonitorAllSources {
 
     public static void main(String[] args) throws Exception {
 
-        Project frame = new Project();
         new MonitorAllSources(args[0]);
 
     }
@@ -24,10 +22,12 @@ public class MonitorAllSources {
     private MyBackgroundProcess apacheLogTailer, appservTailer, topCollector;
     private RegularLauncher threadDumpRequestor;
 
+    private OutputStream errorStream;
+
 
     private MonitorAllSources(String processNum) throws Exception {
         baseDir = new File(System.getProperty("user.dir"));
-
+        errorStream = new FileOutputStream("output/errors.log");
 
         try {
             // identify appserv pid (for now form CLI)
@@ -68,10 +68,11 @@ public class MonitorAllSources {
 
 
             // send regular QUIT signals
-            // TODO: activate: threadDumpRequestor = new RegularLauncher("kill -QUIT " + processNum, 12, 5000, null, null);
+            threadDumpRequestor = new RegularLauncher("ssh appserv@prod-app /appserv/threadDump.sh", 12, 5000, null, null);
+            Thread.sleep(60000);
 
             // now launch stream analyzers
-
+            MonitorWebRenderer.main(new String[] {processNum});
 
         } finally {
             /* if(apacheLogTailer!=null) apacheLogTailer.finish();
@@ -97,6 +98,7 @@ class MyBackgroundProcess extends Thread {
         watchdog = new ExecuteWatchdog(duration);
         executor = new DefaultExecutor();
         executor.setWatchdog(watchdog);
+        executor.setExitValues(new int[]{0,255});
         this.outputFile = outputFile;
         if(outputFile!=null) out = new FileOutputStream(outputFile);//new ByteArrayOutputStream();
         else out = null;
@@ -159,9 +161,11 @@ class RegularLauncher {
                     executor = new DefaultExecutor();
                     if(out!=null) executor.setStreamHandler(new PumpStreamHandler(out));
                     executor.execute(CommandLine.parse(cmd));
-                    out.write((byte) '\n');
-                    out.write(separator.getBytes());
-                    if(out!=null) out.flush();
+                    if(out!=null)  {
+                        out.write(separator.getBytes());
+                        out.write((byte) '\n');
+                        out.flush();
+                    }
                     Thread.sleep(intervalMs);
                     RegularLauncher.this.numTimes--;
                 }
