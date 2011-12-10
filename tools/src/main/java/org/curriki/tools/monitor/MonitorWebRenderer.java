@@ -228,10 +228,12 @@ public class MonitorWebRenderer {
             while( (line = in.readLine())!=null ) {
                 if(line.trim().startsWith("|") || line.startsWith("Killed by signal"))
                     continue;
+                Date d = null;
                 try {
                     Matcher m = pattern.matcher(line);
                     if(m.matches()) {
-                        ttl.add(apacheLogDf.parse(m.group(1)), lineNum);
+                        d = apacheLogDf.parse(m.group(1));
+                        ttl.add(d, lineNum);
                     } else
                         throw new IllegalStateException("Can't find date in line \"" + line + "\".");
 
@@ -241,6 +243,10 @@ public class MonitorWebRenderer {
                 }
                 out.print("<span id='");
                 out.print(integers.format(lineNum));
+                if(d!=null) {
+                    out.print("' time='");
+                    out.print(integers.format(ttl.convert(d)));
+                }
                 out.print("'>");
                 out.print(line);
                 out.println("</span>");
@@ -439,8 +445,11 @@ public class MonitorWebRenderer {
             }
         }
 
-        private int convert(Date date) {
-            return (int) ((date.getTime()-start)/granularity);
+        public int convert(Date date) {
+            return (int) (convertToTimeDiff(date)/granularity);
+        }
+        public int convertToTimeDiff(Date date) {
+            return (int) ((date.getTime()-start));
         }
     }
 }

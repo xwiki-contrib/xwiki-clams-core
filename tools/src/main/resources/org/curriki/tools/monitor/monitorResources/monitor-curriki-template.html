@@ -28,9 +28,10 @@
     }
     $.jqplot.eventListenerHooks.push(['jqplotClick', clickedOnPlot]);
 
+    window.maxCpuLoad = ^maxCpuLoad^;
     $.jqplot('chartdiv',  [cpuLoad],
         { title:'Load',
-            axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:^maxCpuLoad^}},
+            axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:maxCpuLoad}},
             series:[{color:'#5FAB78', title: "Appserv CPU"}]
         });
     //
@@ -72,6 +73,13 @@
 
 <hr>
 <h3>Apache Log</h3>
+<p style="font-size: smaller">LoFormat is %h %l %u %t %D User:%{username}C "%r" %&gt;s %b "%{Referer}i" "%{User-Agent}i"
+    (in <a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">mod_log_config</a>).</p>
+<form action="."
+    onsubmit="Curriki.monitor.searchALog(this, 'apacheLogs'); return false;"
+        >Search: <input name="txt"></form>
+<p style="font-size: smaller">LoFormat is %h %l %u %t %D User:%{username}C "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
+    (in <a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">mod_log_config</a>).</p>
 <iframe style="width:90%; height:10em" src="apacheLogs.html" name="apacheLogs">
 </iframe>
 
@@ -79,6 +87,9 @@
 
 <hr>
 <h3>Appserv Log</h3>
+<form action="."
+    onsubmit="Curriki.monitor.searchALog(this, 'appservLogs'); return false;"
+        >Search: <input name="txt"></form>
 <iframe style="width:90%; height:10em" src="appservLogs.html" name="appservLogs">
 </iframe>
 
