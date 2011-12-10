@@ -32,6 +32,10 @@ public class MonitorWebRenderer {
     public static void main(String[] args) throws Exception {
         long end = System.currentTimeMillis();
         long start = end - 60*1000;
+        if(args.length>1 && args[1].startsWith("[")) {
+            start = apacheLogDf.parse(args[1].substring(1, args[1].length()-1)).getTime();
+            end = start+60*1000;
+        }
         MonitorWebRenderer mwr = new MonitorWebRenderer(start, end, args[0]);
         try {
             mwr.topParser.parse();
@@ -291,6 +295,7 @@ public class MonitorWebRenderer {
             String line;
             Pattern pattern = Pattern.compile("[^|]*\\|([^|]+)\\|.*");
             int lineNum = 0;
+            Date date = null;
             while( (line = in.readLine())!=null ) {
                 // a thread-dump? put it aside
                 if(line.startsWith("Full thread dump")) {
@@ -337,7 +342,8 @@ public class MonitorWebRenderer {
                 if(! (line.startsWith("[GC ["))) try {
                     Matcher m = pattern.matcher(line);
                     if(m.matches()) {
-                        ttl.add(appservLogDf.parse(m.group(1)), lineNum);
+                        date = appservLogDf.parse(m.group(1));
+                        ttl.add(date, lineNum);
                     }
                 } catch (Exception e) {
                     System.err.println("Date mismatch in \"" + line + "\".");
@@ -345,6 +351,10 @@ public class MonitorWebRenderer {
                 }
                 out.print("<span id='");
                 out.print(integers.format(lineNum));
+                if(date!=null) {
+                    out.print(" time='");
+                    out.print(ttl.convertToTimeDiff(date));
+                }
                 out.print("'>");
                 out.print(line);
                 out.println("</span>");
