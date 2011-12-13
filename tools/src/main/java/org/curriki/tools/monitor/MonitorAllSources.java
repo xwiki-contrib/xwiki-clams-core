@@ -1,12 +1,19 @@
 package org.curriki.tools.monitor;
 
 import org.apache.commons.exec.*;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 
 import java.io.*;
-import java.util.logging.StreamHandler;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.LinkedList;
+import java.util.List;
 
 
-public class MonitorAllSources {
+public class MonitorAllSources implements MonitoringConstants {
 
     private static final int duration = 60*1000;
 
@@ -31,18 +38,6 @@ public class MonitorAllSources {
         errorStream = new FileOutputStream("output/errors.log");
 
         try {
-            // identify appserv pid (for now form CLI)
-            //new MyBackgroundProcess("echo \"testing, testing\"", null, 2);
-
-            /*
-            DefaultExecutor executor = new DefaultExecutor();
-            OutputStream out = new ByteArrayOutputStream(512);
-            executor.setStreamHandler(new PumpStreamHandler(out, null));
-            int success = executor.execute(
-                    new CommandLine("ssh").addArgument("appserv@prod-app").addArgument(
-                            "/usr/java/bin/jps -l | /usr/bin/egrep com.sun.enterprise.server.PELaunch | /usr/bin/awk '{print $1}'"));
-            if(success!=0) throw new IllegalStateException("Could not find process.");
-            String processNum = out.toString().trim(); */
             System.out.println("--- Using appserv process number " + processNum + ".");
 
             // launch log collectors
@@ -65,14 +60,23 @@ public class MonitorAllSources {
             threadDumpRequestor = new RegularLauncher(
                     "ssh polx@prod-db /export/home/polx/showProcessList.sh",
                     12, 5000, "mysqlProcessList.txt","----------------------");
-            System.out.println("--- Processes launched for one minute.");
 
+            MonitorCacheEviction monitorCacheEviction = new MonitorCacheEviction(new File("cacheEvictions.js"));
+            monitorCacheEviction.start();
 
             // send regular QUIT signals
             threadDumpRequestor = new RegularLauncher("ssh appserv@prod-app /appserv/threadDump.sh", 12, 5000, null, null);
+
+
+
+
+            System.out.println("--- Processes launched for one minute.");
             Thread.sleep(60000);
 
+            fetchPageLoadTimes();
+
             // now launch stream analyzers
+            System.out.println("--- Now rendering.");
             MonitorWebRenderer.main(new String[] {processNum});
 
         } finally {
@@ -81,6 +85,30 @@ public class MonitorAllSources {
             if(topCollector!=null) topCollector.finish();
             if(threadDumpRequestor!=null) threadDumpRequestor.stop(); */
         }
+    }
+
+    private void fetchPageLoadTimes() {
+        HttpClient client = new HttpClient();
+        String[] fileNames = URLS_TO_MONITOR;
+
+        byte[] b= new byte[512];
+        for(String fileName: fileNames) {
+            try {
+                GetMethod method = new GetMethod(PAGE_LOAD_MEASURE_BASE + fileName);
+                client.executeMethod(method);
+                int i=0;
+                InputStream in = method.getResponseBodyAsStream();
+                FileOutputStream out = new FileOutputStream(fileName);
+                while((i=in.read(b,0,512))!=-1) {
+                    out.write(b,0,i);
+                }
+                out.flush();
+                out.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 }
 
@@ -181,3 +209,78 @@ class RegularLauncher {
 
 }
 
+
+
+class MonitorCacheEviction extends Thread {
+
+    public MonitorCacheEviction(File file) {
+        this.file = file;
+    }
+
+
+    private File file;
+    private HttpClient client = new HttpClient();
+    private List<String[]> entries = new LinkedList<String[]>();
+    int numRuns = 0, maxRuns = 12, interval = 5;
+    long startTime;
+    NumberFormat numForm = new DecimalFormat("####.###");
+
+    public void run() {
+        GetMethod get = new GetMethod("http://www.curriki.org/xwiki/bin/view/CurrikiCode/CacheMonitor");
+        String prefix = "<li>eviction rate (ev/s):";
+        startTime = System.currentTimeMillis();
+
+        while(numRuns<maxRuns) {
+            try {
+                numRuns++;
+                int status = client.executeMethod(get);
+                if(status!=200) throw new IOException("Bad response from Curriki: " + get.getStatusLine());
+                LineNumberReader in = new LineNumberReader(new InputStreamReader(get.getResponseBodyAsStream(),"utf-8"));
+                String line;
+                while((line=in.readLine())!=null) {
+                    if(line.startsWith(prefix)) {
+                        line = line.substring(prefix.length());
+                        line = line.substring(0,line.indexOf('<'));
+                        pushValue(line);
+                    }
+                }
+                in.close();
+                Thread.sleep((startTime + numRuns * interval * 1000) - System.currentTimeMillis());
+            } catch (InterruptedException e) {
+                break;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        output(file);
+
+    }
+
+    private void pushValue(String value) {
+        entries.add(new String[]{numForm.format(numRuns*interval), value});
+    }
+
+    public String getValues() {
+        StringBuilder b = new StringBuilder();
+        b.append("cacheEvictions = [");
+        boolean started = false;
+        for(String[] vals: entries) {
+            if(started) b.append(", ");
+            b.append("[").append(vals[0]).append(',').append(vals[1]).append("]");
+            started = true;
+        }
+        b.append("];");
+        return b.toString();
+    }
+
+    public void output(File file) {
+        try {
+            FileUtils.writeStringToFile(file, getValues());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+}

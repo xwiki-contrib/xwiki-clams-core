@@ -24,6 +24,7 @@
 		 var x = datapos.xaxis, y = datapos.yaxis;
 		 x = Math.round(x/granularity)*granularity;
          console.log("click!", x);
+        Curriki.monitor.renewPlot(x, null, null);
         positionWindows(x);
     }
     $.jqplot.eventListenerHooks.push(['jqplotClick', clickedOnPlot]);
@@ -73,12 +74,10 @@
 
 <hr>
 <h3>Apache Log</h3>
-<p style="font-size: smaller">LoFormat is %h %l %u %t %D User:%{username}C "%r" %&gt;s %b "%{Referer}i" "%{User-Agent}i"
-    (in <a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">mod_log_config</a>).</p>
 <form action="."
     onsubmit="Curriki.monitor.searchALog(this, 'apacheLogs'); return false;"
         >Search: <input name="txt"></form>
-<p style="font-size: smaller">LoFormat is %h %l %u %t %D User:%{username}C "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
+<p style="font-size: smaller">LogFormat is %h %l %u %t %D User:%{username}C "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
     (in <a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">mod_log_config</a>).</p>
 <iframe style="width:90%; height:10em" src="apacheLogs.html" name="apacheLogs">
 </iframe>

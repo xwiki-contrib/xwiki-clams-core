@@ -71,7 +71,8 @@ Curriki.monitor.searchInLog = function(query, duration, granularity) {
                 time = Math.floor(time/granularity)*granularity;
                 var i= time/granularity;
                 var point = dataSet[i];
-                dataSet[i] = [i, point[1]+1];
+                dataSet[i] = [i*granularity, point[i]+1];
+                if(console) console.log("dataSet["+i+"]=" + dataSet[i]);
             }
         } else {
             elt.css("background-color","transparent");
@@ -102,17 +103,19 @@ Curriki.monitor.renewPlot = function(timeClicked, otherDataSeries, otherDataLabe
     } else {
         for(x in otherDataSeries) { if(x[1]>maxOtherD) maxOtherD = x[1]; }
         for(x in otherDataSeries) {
-            otherD.push([x[0], x[1]*maxCpuLoad/maxOtherD]);
+            var val = x[1]*maxCpuLoad/maxOtherD;
+            if(isNaN(val)) val = 0;
+            otherD.push([x[0], val]);
         }
         if(maxOtherD!=0) otherDataLabel =  otherDataLabel + " (0-" + maxOtherD + ")";
-        Curriki.monitor.olderDataSeries = otherDataSeries;
+        Curriki.monitor.olderDataSeries = otherD;
         Curriki.monitor.olderDataLabel = otherDataLabel;
     }
     // clear
     document.getElementById("chartdiv").innerHTML = "";
     // chart
     d = $.jqplot('chartdiv',
-           [cpuLoad, otherDataSeries, clickData],
+           [cpuLoad, otherD, clickData],
             { axes:{xaxis:{min:0, max:maxTime}, yaxis:{min:0, max:maxCpuLoad}},
             legend:{ show:true,
                     labels:[    'Appserv CPU',
