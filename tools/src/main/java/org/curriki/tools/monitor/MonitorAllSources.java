@@ -7,6 +7,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
+import java.net.URLEncoder;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.LinkedList;
@@ -68,8 +69,6 @@ public class MonitorAllSources implements MonitoringConstants {
             threadDumpRequestor = new RegularLauncher("ssh appserv@prod-app /appserv/threadDump.sh", 12, 5000, null, null);
 
 
-
-
             System.out.println("--- Processes launched for one minute.");
             Thread.sleep(60000);
 
@@ -87,18 +86,19 @@ public class MonitorAllSources implements MonitoringConstants {
         }
     }
 
-    private void fetchPageLoadTimes() {
+    static void fetchPageLoadTimes() {
         HttpClient client = new HttpClient();
-        String[] fileNames = URLS_TO_MONITOR;
+        String[] urls = URLS_TO_MONITOR;
 
         byte[] b= new byte[512];
-        for(String fileName: fileNames) {
+        for(String url: urls) {
             try {
-                GetMethod method = new GetMethod(PAGE_LOAD_MEASURE_BASE + fileName);
+                url = MonitorPageLoadTime.urlToFile(url);
+                GetMethod method = new GetMethod(PAGE_LOAD_MEASURE_BASE + URLEncoder.encode(url));
                 client.executeMethod(method);
                 int i=0;
                 InputStream in = method.getResponseBodyAsStream();
-                FileOutputStream out = new FileOutputStream(fileName);
+                FileOutputStream out = new FileOutputStream(url);
                 while((i=in.read(b,0,512))!=-1) {
                     out.write(b,0,i);
                 }
@@ -232,7 +232,6 @@ class MonitorCacheEviction extends Thread {
 
         while(numRuns<maxRuns) {
             try {
-                numRuns++;
                 int status = client.executeMethod(get);
                 if(status!=200) throw new IOException("Bad response from Curriki: " + get.getStatusLine());
                 LineNumberReader in = new LineNumberReader(new InputStreamReader(get.getResponseBodyAsStream(),"utf-8"));
@@ -245,6 +244,7 @@ class MonitorCacheEviction extends Thread {
                     }
                 }
                 in.close();
+                numRuns++;
                 Thread.sleep((startTime + numRuns * interval * 1000) - System.currentTimeMillis());
             } catch (InterruptedException e) {
                 break;

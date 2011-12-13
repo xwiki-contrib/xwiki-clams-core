@@ -3,18 +3,16 @@ package org.curriki.tools.monitor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
+import javax.swing.text.Utilities;
 import java.io.*;
 import java.text.*;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** process to construct a set of HTML pages from the stand
  */
-public class MonitorWebRenderer {
+public class MonitorWebRenderer implements MonitoringConstants {
 
     private File baseDir = new File("output");
     private long start, end;
@@ -22,9 +20,9 @@ public class MonitorWebRenderer {
     private float maxCpuLoad = 0;
 
     private static final float intervalBetweenTops = 5000;
-    private static DateFormat apacheLogDf = new SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z"),
-        appservLogDf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"),
-        directoryNameDf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS_Z");
+    private static DateFormat apacheLogDf = new SimpleDateFormat(APACHE_LOG_DATEFORMAT),
+        appservLogDf = new SimpleDateFormat(APPSERV_LOG_DATEFORMAT),
+        directoryNameDf = new SimpleDateFormat(DIRNAME_DATEFORMAT);
         // example 2011-11-28T13:13:11.901-0800
     private static NumberFormat decimals = new DecimalFormat("######.##"),
         integers = new DecimalFormat("#####");
@@ -54,7 +52,9 @@ public class MonitorWebRenderer {
         Map<String,String> values = new HashMap<String,String>();
         values.put("startDate", apacheLogDf.format(new Date(start)));
         values.put("endDate", apacheLogDf.format(new Date(end)));
-        values.put("maxCpuLoad", integers.format(Math.round(mwr.maxCpuLoad/100)*100+100));
+        values.put("cacheEvictions", FileUtils.readFileToString(new File("cacheEvictions.js")));
+        values.put("maxCpuLoad", integers.format(Math.round(mwr.maxCpuLoad / 100) * 100 + 100));
+        values.put("pageLoadMeasures", mwr.pageLoadMeasuresSb.toString());
         Class clz = MonitorWebRenderer.class;
         Util.substituteStream(
                 clz.getResourceAsStream("monitorResources/monitor-curriki-template.html"),
@@ -82,13 +82,22 @@ public class MonitorWebRenderer {
         apacheLogParser = new ApacheLogParser();
         appservLogParser = new AppservLogParser();
         mySQLProcessListSplitter = new MySQLProcessListSplitter();
+
+        pageLoadMeasuresSb = new StringBuilder();
+        pageLoadParsers = new PageLoadParser[URLS_TO_MONITOR.length];
+        for(int i=0; i<URLS_TO_MONITOR.length; i++) {
+            pageLoadParsers[i] = new PageLoadParser(URLS_TO_MONITOR[i], start, end, (int) ((start-end)/intervalBetweenTops));
+            pageLoadParsers[i].run();
+            pageLoadMeasuresSb.append(pageLoadParsers[i].toJSArrayDecl("pageLoad" + i));
+        }
     }
 
     private TopParser topParser;
     private ApacheLogParser apacheLogParser;
     private AppservLogParser appservLogParser;
     private MySQLProcessListSplitter mySQLProcessListSplitter;
-
+    private PageLoadParser[] pageLoadParsers;
+    private StringBuilder pageLoadMeasuresSb;
 
     private static class Util {
 
@@ -104,7 +113,7 @@ public class MonitorWebRenderer {
             in.close();
         }
 
-        private static String readTillStartsWith(LineNumberReader reader, String prefix, PrintWriter putLinesIn) throws IOException {
+        static String readTillStartsWith(LineNumberReader reader, String prefix, PrintWriter putLinesIn) throws IOException {
             String read;
             while((read = reader.readLine())!=null) {
                 if(putLinesIn!=null) putLinesIn.println(read);
@@ -113,7 +122,7 @@ public class MonitorWebRenderer {
             return null;
         }
 
-        private static void outputJsonPairsForJQPlot(PrintWriter out, String varName, float[] vals) {
+        static void outputJsonPairsForJQPlot(PrintWriter out, String varName, float[] vals) {
             out.print(varName); out.print("= [");
             int numBuckets = vals.length;
             for(int i=0; i<numBuckets; i++) {
@@ -127,7 +136,7 @@ public class MonitorWebRenderer {
             out.println("];");
         }
 
-        private static void outputJsonHash(PrintWriter out, String varName, int[] vals) {
+        static void outputJsonHash(PrintWriter out, String varName, int[] vals) {
             out.print(varName); out.print(" = {");
             int numBuckets = vals.length;
             for(int i=0; i<numBuckets; i++) {
@@ -139,6 +148,10 @@ public class MonitorWebRenderer {
                 if(i+1<numBuckets) out.print(",");
             }
             out.println("};");
+        }
+
+        public static LineNumberReader readFile(String fileName) throws IOException {
+            return new LineNumberReader( new InputStreamReader(new FileInputStream(fileName),"utf-8"));
         }
 
         public static PrintWriter makePrintWriter(String fileName) throws IOException {
@@ -158,7 +171,7 @@ public class MonitorWebRenderer {
 
 
         void parse() throws Exception {
-            LineNumberReader in = new LineNumberReader(new InputStreamReader(new FileInputStream("tops.txt")));
+            LineNumberReader in = Util.readFile("tops.txt");
 
             int count=0; String read = "";
             while(count< numBuckets) {
@@ -225,7 +238,7 @@ public class MonitorWebRenderer {
             out.println(pageTemplateBits[0]);
 
             // put logs in
-            LineNumberReader in = new LineNumberReader(new InputStreamReader(new FileInputStream("apacheLog.txt"),"utf-8"));
+            LineNumberReader in = Util.readFile("apacheLog.txt");
             String line;
             Pattern pattern = Pattern.compile("[^\\[]*\\[([^]]+)\\].*");
             int lineNum = 0;
@@ -291,7 +304,7 @@ public class MonitorWebRenderer {
             out.println(pageTemplateBits[0]);
 
             // put logs in
-            LineNumberReader in = new LineNumberReader(new InputStreamReader(new FileInputStream("appservLogs.txt"),"utf-8"));
+            LineNumberReader in = Util.readFile("appservLogs.txt");
             String line;
             Pattern pattern = Pattern.compile("[^|]*\\|([^|]+)\\|.*");
             int lineNum = 0;
@@ -405,7 +418,7 @@ public class MonitorWebRenderer {
                 throw new IllegalStateException("Template is malformed, expected sequence log, date.");
             }
 
-            LineNumberReader in = new LineNumberReader(new InputStreamReader(new FileInputStream("mysqlProcessList.txt"),"utf-8"));
+            LineNumberReader in = Util.readFile("mysqlProcessList.txt");
             String line;
             renewOut();
             while( (line = in.readLine())!=null ) {
@@ -423,9 +436,6 @@ public class MonitorWebRenderer {
         }
 
     }
-
-
-
 
     // =======================================================================================================
     private class TimeToLine {
@@ -462,4 +472,67 @@ public class MonitorWebRenderer {
             return (int) ((date.getTime()-start));
         }
     }
+
+
+    // ==============================================================================
+    // reads lines of the form
+    //   [13/12/2011:20:57:10 +0100] 0.89 s http://www.curriki.org/ : HTTP/1.1 200 OK
+    // and converts them to an array of measures
+    private class PageLoadParser {
+
+
+        public PageLoadParser(String fileName, long startTime, long endTime, int numSteps) {
+            this.fileName = fileName;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.numSteps = numSteps;
+            this.interval = (endTime-startTime)/numSteps;
+            this.times = new float[numSteps];
+        }
+
+        private float[] times;
+        private String fileName;
+        private long startTime, endTime, interval;
+        private int numSteps = 0;
+        private DateFormat df = new SimpleDateFormat(PAGE_LOAD_DATEFORMAT_PATTERN);
+
+        public void run() {
+            try {
+                LineNumberReader in = Util.readFile(fileName);
+                String line;
+                Pattern pattern = Pattern.compile("\\[([^\\]]+)\\] ([0-9\\.]+) s .*");
+                while((line=in.readLine())!=null) {
+                    Matcher matcher = pattern.matcher(line);
+                    if(!matcher.matches()) {
+                        System.err.println("Line non matching! ");
+                        System.err.println("  - " + line);
+                    } else {
+                        long time = df.parse(matcher.group(1)).getTime();
+                        float duration = Float.parseFloat(matcher.group(2));
+                        if(time<startTime || time>=endTime) continue;
+                        time = time-startTime;
+                        int pos = (int) (time/interval);
+                        times[pos] = duration;
+                    }
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void expressArray(String varName, PrintWriter out) {
+            Util.outputJsonPairsForJQPlot(out, varName, times);
+        }
+
+        public String toJSArrayDecl(String varName) {
+            StringWriter out = new StringWriter();
+            PrintWriter pout = new PrintWriter(out);
+            expressArray(varName, pout);
+            pout.flush();
+            return out.toString();
+        }
+
+    }
+
 }

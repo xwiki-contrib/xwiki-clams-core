@@ -14,6 +14,43 @@ maxTime = 60;
 Curriki = new Object();
 Curriki.monitor = new Object();
 
+
+
+/* function clickedOnPlot(ev, gridpos, datapos, neighbor, plot) {
+     var x = datapos.xaxis, y = datapos.yaxis;
+     x = Math.round(x/granularity)*granularity;
+     console.log("click!", x);
+    Curriki.monitor.renewPlot(x, null, null);
+    positionWindows(x);
+}
+$.jqplot.eventListenerHooks.push(['jqplotClick', clickedOnPlot]);
+
+$.jqplot('chartdiv',  [cpuLoad],
+    { title:'Load',
+        axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:maxCpuLoad}},
+        series:[{color:'#5FAB78', title: "Appserv CPU"}]
+    });
+
+function adjustTops(p) {
+    jQuery.ajax({ context:document.body,
+                url: "topsHeader_" + p + ".txt",
+                success: function(data) {
+                  //console.log("Data received: " + data);
+                  $('#topHeader').html(data);
+                }});
+}
+
+function positionWindows(p) {
+    p = Math.round(p/granularity)*granularity;
+    adjustTops(p);
+    frames['apacheLogs'].Curriki.monitor.rollToTime(Math.round(p));
+    frames['appservLogs'].Curriki.monitor.rollToTime(Math.round(p));
+    frames['threads'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
+    frames['mysql'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
+}
+
+*/
+
 Curriki.monitor.rollToTime =  function(fromStartInSeconds) {
 // =================================================================
     var key = "" + fromStartInSeconds + "";
@@ -61,18 +98,18 @@ Curriki.monitor.searchALog = function(query, frameName) {
 Curriki.monitor.searchInLog = function(query, duration, granularity) {
     var regexp = new RegExp(query);
     var dataSet = new Array();
-    for(i=0; i<duration; i+=granularity) {dataSet.push([i, 0]);}
+    for(i=0; i<duration/granularity; i++) { dataSet[i]=new Array(i*granularity, 0); }
     $("span").each(function(pos, elt) {
         elt = $(elt);
         if(regexp.test(elt.text())) {
             elt.css("background-color","yellow");
-            var time = elt.attr("time");
+            var t = elt.attr("time");
+            var time = parseInt(t);
             if(time) {
-                time = Math.floor(time/granularity)*granularity;
-                var i= time/granularity;
-                var point = dataSet[i];
-                dataSet[i] = [i*granularity, point[i]+1];
-                if(console) console.log("dataSet["+i+"]=" + dataSet[i]);
+                var point = dataSet[time];
+                if(typeof(point)=="object")
+                    dataSet[time] = [point[0], point[1]+1];
+                //console.log("dataSet["+time+"]=" + dataSet[time]);
             }
         } else {
             elt.css("background-color","transparent");
@@ -98,28 +135,54 @@ Curriki.monitor.renewPlot = function(timeClicked, otherDataSeries, otherDataLabe
     var maxOtherD = 0;
 
     if(typeof(otherDataSeries)=="undefined" || otherDataSeries==null) {
-        otherDataSeries = Curriki.monitor.olderDataSeries;
+        otherD = Curriki.monitor.olderDataSeries;
         otherDataLabel = Curriki.monitor.olderDataLabel;
     } else {
-        for(x in otherDataSeries) { if(x[1]>maxOtherD) maxOtherD = x[1]; }
-        for(x in otherDataSeries) {
-            var val = x[1]*maxCpuLoad/maxOtherD;
-            if(isNaN(val)) val = 0;
-            otherD.push([x[0], val]);
-        }
+        var p = Curriki.monitor.normalizeSeries(otherDataSeries);
+        otherD = p[1];
+        maxOtherD = p[0];
         if(maxOtherD!=0) otherDataLabel =  otherDataLabel + " (0-" + maxOtherD + ")";
         Curriki.monitor.olderDataSeries = otherD;
         Curriki.monitor.olderDataLabel = otherDataLabel;
     }
     // clear
     document.getElementById("chartdiv").innerHTML = "";
+
+    var dataSets = [cpuLoad, otherD, clickData];
+    var labels = new Array('Appserv CPU',
+                                otherDataLabel,
+                                clickedLabel);
+    if(typeof(cacheEvictions)=="object") {
+        if(typeof(cacheEvictions.normalized)=="boolean") {
+            // nothing to do
+        } else {
+            cacheEvictions = Curriki.monitor.normalizeSeries(cacheEvictions);
+            cacheEvictions.normalized = true;
+        }
+        dataSets.push(cacheEvictions[1]);
+        labels.push("Cache evictions (0-" + Math.round(cacheEvictions[0]/100)*100 + ")");
+    }
+
     // chart
     d = $.jqplot('chartdiv',
-           [cpuLoad, otherD, clickData],
+            dataSets,
             { axes:{xaxis:{min:0, max:maxTime}, yaxis:{min:0, max:maxCpuLoad}},
             legend:{ show:true,
-                    labels:[    'Appserv CPU',
-                                otherDataLabel,
-                                clickedLabel] },
+                labels: labels },
             series:[{color:'#5FAB78', title: "Appserv CPU"}]    });
+}
+
+Curriki.monitor.normalizeSeries = function(otherDataSeries) {
+    var otherD = new Array();
+    var maxOtherD = 0;
+    // compute max
+    for(i=0; i<otherDataSeries.length; i++)
+        { if(otherDataSeries[i][1]>maxOtherD) maxOtherD = otherDataSeries[i][1]; }
+    for(i=0; i<otherDataSeries.length; i++) {
+        var x = otherDataSeries[i];
+        var val = x[1]*maxCpuLoad/maxOtherD;
+        if(isNaN(val)) val = 0;
+        otherD.push([x[0], val]);
+    }
+    return [maxOtherD, otherD]
 }

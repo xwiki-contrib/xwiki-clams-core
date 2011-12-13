@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="js/jquery.jqplot.min.css" />
 </head>
 <body style="width:99%">
-<h1>Monitor Curiki</h1>
+<h1><a href="../">Monitor Curiki</a></h1>
 
 <p>Report on: from ^startDate^ to ^endDate^</p>
 
@@ -18,30 +18,27 @@
 <script type="text/javascript" src="topsCpuLoad.js"></script>
 <script type="text/javascript" src="js/logRoller.js"></script>
 <script type="text/javascript">
-    var duration = 60, granularity = 5;
+    window.duration = 60
+    window.granularity = 5;
+    window.maxCpuLoad = ^maxCpuLoad^;
+    ^cacheEvictions^;
+    ^pageLoadMeasures^;
+
 
     function clickedOnPlot(ev, gridpos, datapos, neighbor, plot) {
-		 var x = datapos.xaxis, y = datapos.yaxis;
-		 x = Math.round(x/granularity)*granularity;
+         var x = datapos.xaxis, y = datapos.yaxis;
+         x = Math.round(x/granularity)*granularity;
          console.log("click!", x);
         Curriki.monitor.renewPlot(x, null, null);
         positionWindows(x);
     }
     $.jqplot.eventListenerHooks.push(['jqplotClick', clickedOnPlot]);
 
-    window.maxCpuLoad = ^maxCpuLoad^;
-    $.jqplot('chartdiv',  [cpuLoad],
+    /* $.jqplot('chartdiv',  [cpuLoad],
         { title:'Load',
             axes:{xaxis:{min:0, max:60}, yaxis:{min:0, max:maxCpuLoad}},
             series:[{color:'#5FAB78', title: "Appserv CPU"}]
-        });
-    //
-    /* $('#chartdiv').click(function(evt) {
-        console.log("Mouse down: ", evt.offsetX-26, 82-evt.offsetY);
-        var p = Math.round(0.5+60*(evt.offsetX-26)/$('#chartdiv').width());
-        console.log("Would position to " + p);
-        positionWindows(p);
-    }); */
+        }); */
 
     function adjustTops(p) {
         jQuery.ajax({ context:document.body,
@@ -61,9 +58,9 @@
         frames['mysql'].Curriki.monitor.jumpToTimePage(Math.round(p), granularity);
     }
 
-
     $('document').ready( function() {
                 adjustTops(0);
+                Curriki.monitor.renewPlot(null, null, null);
             }
     );
 </script>
