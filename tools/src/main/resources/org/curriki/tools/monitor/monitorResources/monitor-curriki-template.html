@@ -13,7 +13,7 @@
 
 <p>Report on: from ^startDate^ to ^endDate^</p>
 
-<div id="chartdiv" style="height:100px;width:99%;"></div>
+<div id="chartdiv" style="height:200px;width:99%;"></div>
 
 <script type="text/javascript" src="topsCpuLoad.js"></script>
 <script type="text/javascript" src="js/logRoller.js"></script>
@@ -22,6 +22,7 @@
     window.granularity = 5;
     window.maxCpuLoad = ^maxCpuLoad^;
     ^cacheEvictions^;
+    pageLoad = new Array();
     ^pageLoadMeasures^;
 
 
@@ -101,6 +102,9 @@
 <iframe style="width:90%; height:10em " src="mysqlProcesses_0.html" name="mysql">
 </iframe>
 
+<hr>
+<h3>Sources</h3>
+<p>^sourcesLinks^</p>
 
 </body>
 </html>

@@ -21,12 +21,11 @@ public class MonitorPageLoadTime implements MonitoringConstants {
     private final Thread runner;
     private boolean timeToStop = false;
     private DateFormat df = new SimpleDateFormat(PAGE_LOAD_DATEFORMAT_PATTERN);
-    private static ThreadGroup threadGroup = new ThreadGroup("PageLoadTimes");
 
     public MonitorPageLoadTime(final String url, final PrintWriter out) {
         this.httpClient = new HttpClient();
         this.get = new GetMethod(url);
-        this.runner = new Thread(threadGroup, "PageLoader") {
+        this.runner = new Thread("PageLoader") {
             public void run() {
                 long start = System.currentTimeMillis();
                 int k=0;
@@ -34,13 +33,17 @@ public class MonitorPageLoadTime implements MonitoringConstants {
                     try {
                         long thisStart = System.currentTimeMillis();
                         int status = httpClient.executeMethod(get);
+                        if(status!=200) throw new IllegalStateException("Bad response: " + get.getStatusLine());
                         k++;
                         if(k>=MAX_TIMES) break;
                         long end = System.currentTimeMillis();
-                        out.println("[" + df.format(new Date(start)) + "] " + (end - thisStart) / 1000f + " s " + url + " : " + get.getStatusLine());
+                        out.println("[" + df.format(new Date(thisStart)) + "] " + (end - thisStart) / 1000f + " s " + url + " : " + get.getStatusLine());
                         if(k%3==0) out.flush();
                         long sleepTime = 0;
-                        while(sleepTime<=0) sleepTime = start+k*INTERVAL - System.currentTimeMillis();
+                        while(sleepTime<=0) {
+                            sleepTime = start+k*INTERVAL - System.currentTimeMillis();
+                            k++;
+                        }
                         Thread.sleep(sleepTime);
                         } catch (InterruptedException e) { timeToStop = true; System.err.println("Interrupted.");
                     } catch (IOException e) { e.printStackTrace(); }
@@ -85,6 +88,6 @@ public class MonitorPageLoadTime implements MonitoringConstants {
 
 
     static String urlToFile(String url) {
-        return URLEncoder.encode(url.substring("http://".length()));
+        return URLEncoder.encode(url.substring("http://".length()).replaceAll("/","_"));
     }
 }

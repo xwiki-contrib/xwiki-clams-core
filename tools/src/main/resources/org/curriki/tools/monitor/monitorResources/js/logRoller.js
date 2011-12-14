@@ -152,6 +152,12 @@ Curriki.monitor.renewPlot = function(timeClicked, otherDataSeries, otherDataLabe
     var labels = new Array('Appserv CPU',
                                 otherDataLabel,
                                 clickedLabel);
+    var seriesOptions = new Array(
+        {title: "Appserv CPU",      color:'#5FAB78'},
+        {color:'#111111', lineWidth: '0.3px', shadow:false },
+        {color:'brown', lineWidth: '1px'}, // clicks
+        {color:'#AAAAAA', lineWidth: '0.3px', shadow:false} // cache evictions
+        )
     if(typeof(cacheEvictions)=="object") {
         if(typeof(cacheEvictions.normalized)=="boolean") {
             // nothing to do
@@ -169,7 +175,7 @@ Curriki.monitor.renewPlot = function(timeClicked, otherDataSeries, otherDataLabe
             { axes:{xaxis:{min:0, max:maxTime}, yaxis:{min:0, max:maxCpuLoad}},
             legend:{ show:true,
                 labels: labels },
-            series:[{color:'#5FAB78', title: "Appserv CPU"}]    });
+            series:seriesOptions    });
 }
 
 Curriki.monitor.normalizeSeries = function(otherDataSeries) {

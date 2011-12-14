@@ -69,8 +69,8 @@ public class MonitorAllSources implements MonitoringConstants {
             threadDumpRequestor = new RegularLauncher("ssh appserv@prod-app /appserv/threadDump.sh", 12, 5000, null, null);
 
 
-            System.out.println("--- Processes launched for one minute.");
-            Thread.sleep(60000);
+            System.out.println("--- Processes launched for one minute, waiting two minutes more.");
+            Thread.sleep(120000);
 
             fetchPageLoadTimes();
 
@@ -244,8 +244,10 @@ class MonitorCacheEviction extends Thread {
                     }
                 }
                 in.close();
-                numRuns++;
-                Thread.sleep((startTime + numRuns * interval * 1000) - System.currentTimeMillis());
+                numRuns++; long timeout;
+                while((timeout = startTime + numRuns * interval * 1000 - System.currentTimeMillis())<0)
+                    numRuns++;
+                Thread.sleep(timeout);
             } catch (InterruptedException e) {
                 break;
             } catch (IOException e) {

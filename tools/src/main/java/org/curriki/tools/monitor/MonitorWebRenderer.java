@@ -3,7 +3,6 @@ package org.curriki.tools.monitor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-import javax.swing.text.Utilities;
 import java.io.*;
 import java.text.*;
 import java.util.*;
@@ -48,12 +47,23 @@ public class MonitorWebRenderer implements MonitoringConstants {
             mwr.mySQLProcessListSplitter.parse();
         } catch (Exception e) { e.printStackTrace(); }
 
+        // copy all files
+        StringBuilder sourcesLinks = new StringBuilder("");
+        for(File file: new File(System.getProperty("user.dir")).listFiles()) {
+            if(!file.isFile() || file.getName().endsWith(".sh") || "index.html".equals(file.getName())) continue;
+            String name = file.getName();
+            FileUtils.copyFile(file, new File(mwr.baseDir, name));
+            sourcesLinks.append("<a href='").append(name).append("'>").append(name).append("</a> - ");
+        }
+
+
         // create home page
         Map<String,String> values = new HashMap<String,String>();
         values.put("startDate", apacheLogDf.format(new Date(start)));
         values.put("endDate", apacheLogDf.format(new Date(end)));
         values.put("cacheEvictions", FileUtils.readFileToString(new File("cacheEvictions.js")));
         values.put("maxCpuLoad", integers.format(Math.round(mwr.maxCpuLoad / 100) * 100 + 100));
+        values.put("sourcesLinks", sourcesLinks.toString());
         values.put("pageLoadMeasures", mwr.pageLoadMeasuresSb.toString());
         Class clz = MonitorWebRenderer.class;
         Util.substituteStream(
@@ -86,9 +96,11 @@ public class MonitorWebRenderer implements MonitoringConstants {
         pageLoadMeasuresSb = new StringBuilder();
         pageLoadParsers = new PageLoadParser[URLS_TO_MONITOR.length];
         for(int i=0; i<URLS_TO_MONITOR.length; i++) {
-            pageLoadParsers[i] = new PageLoadParser(URLS_TO_MONITOR[i], start, end, (int) ((start-end)/intervalBetweenTops));
+            pageLoadParsers[i] = new PageLoadParser(MonitorPageLoadTime.urlToFile(URLS_TO_MONITOR[i]), start, end, (int) ((end-start)/intervalBetweenTops));
             pageLoadParsers[i].run();
-            pageLoadMeasuresSb.append(pageLoadParsers[i].toJSArrayDecl("pageLoad" + i));
+            pageLoadMeasuresSb.append(pageLoadParsers[i].toJSArrayDecl("pageLoad[" + i + "]"));
+            pageLoadMeasuresSb.append("\n");
+            pageLoadMeasuresSb.append("pageLoad[").append(i).append("].url='").append(URLS_TO_MONITOR[i]).append("';\n" );
         }
     }
 
@@ -478,7 +490,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
     // reads lines of the form
     //   [13/12/2011:20:57:10 +0100] 0.89 s http://www.curriki.org/ : HTTP/1.1 200 OK
     // and converts them to an array of measures
-    private class PageLoadParser {
+    static class PageLoadParser {
 
 
         public PageLoadParser(String fileName, long startTime, long endTime, int numSteps) {
@@ -509,7 +521,10 @@ public class MonitorWebRenderer implements MonitoringConstants {
                     } else {
                         long time = df.parse(matcher.group(1)).getTime();
                         float duration = Float.parseFloat(matcher.group(2));
-                        if(time<startTime || time>=endTime) continue;
+                        if(time<startTime || time>=endTime) {
+                            System.err.println("No good date " + matcher.group(1) );
+                            continue;
+                        }
                         time = time-startTime;
                         int pos = (int) (time/interval);
                         times[pos] = duration;
