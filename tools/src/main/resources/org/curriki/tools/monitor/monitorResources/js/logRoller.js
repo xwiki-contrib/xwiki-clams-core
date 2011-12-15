@@ -105,10 +105,11 @@ Curriki.monitor.searchInLog = function(query, duration, granularity) {
             elt.css("background-color","yellow");
             var t = elt.attr("time");
             var time = parseInt(t);
+            var slot  = Math.round(time/granularity);
             if(time) {
-                var point = dataSet[time];
+                var point = dataSet[slot];
                 if(typeof(point)=="object")
-                    dataSet[time] = [point[0], point[1]+1];
+                    dataSet[slot] = [point[0], point[1]+1];
                 //console.log("dataSet["+time+"]=" + dataSet[time]);
             }
         } else {
@@ -168,7 +169,20 @@ Curriki.monitor.renewPlot = function(timeClicked, otherDataSeries, otherDataLabe
         dataSets.push(cacheEvictions[1]);
         labels.push("Cache evictions (0-" + Math.round(cacheEvictions[0]/100)*100 + ")");
     }
-
+    if(typeof(pageLoad)=="object") {
+        for(var i=0; i<pageLoad.length; i++) {
+            if(typeof(pageLoad[i])=="undefined") continue;
+            if(typeof(pageLoad[i].normalized)=="undefined") {
+                pageLoad[i].normalized = Curriki.monitor.normalizeSeries(pageLoad[i]);
+            }
+            dataSets.push(pageLoad[i].normalized[1]);
+            var l = pageLoad[i].url;
+            if(l.length>10) l = l.substring(l.length-10);
+            labels.push(l + "(0-" + pageLoad[i].normalized[0] + "s)");
+            seriesOptions.push({color:'#'+ new Number((i*3)*256 + (i*2)*16 + (i*2)).toString(16), lineWidth: '0.3px', shadow:false});
+        }
+    }
+    
     // chart
     d = $.jqplot('chartdiv',
             dataSets,
@@ -182,9 +196,9 @@ Curriki.monitor.normalizeSeries = function(otherDataSeries) {
     var otherD = new Array();
     var maxOtherD = 0;
     // compute max
-    for(i=0; i<otherDataSeries.length; i++)
+    for(var i=0; i<otherDataSeries.length; i++)
         { if(otherDataSeries[i][1]>maxOtherD) maxOtherD = otherDataSeries[i][1]; }
-    for(i=0; i<otherDataSeries.length; i++) {
+    for(var i=0; i<otherDataSeries.length; i++) {
         var x = otherDataSeries[i];
         var val = x[1]*maxCpuLoad/maxOtherD;
         if(isNaN(val)) val = 0;

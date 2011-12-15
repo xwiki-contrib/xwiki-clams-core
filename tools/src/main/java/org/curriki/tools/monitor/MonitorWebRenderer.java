@@ -33,7 +33,12 @@ public class MonitorWebRenderer implements MonitoringConstants {
             start = apacheLogDf.parse(args[1].substring(1, args[1].length()-1)).getTime();
             end = start+60*1000;
         }
-        MonitorWebRenderer mwr = new MonitorWebRenderer(start, end, args[0]);
+        process(start, end, args[0]);
+
+    }
+
+    public static void process(long start, long end, String pid) throws Exception {
+        MonitorWebRenderer mwr = new MonitorWebRenderer(start, end, pid);
         try {
             mwr.topParser.parse();
         } catch (Exception e) { e.printStackTrace(); }
@@ -99,8 +104,8 @@ public class MonitorWebRenderer implements MonitoringConstants {
             pageLoadParsers[i] = new PageLoadParser(MonitorPageLoadTime.urlToFile(URLS_TO_MONITOR[i]), start, end, (int) ((end-start)/intervalBetweenTops));
             pageLoadParsers[i].run();
             pageLoadMeasuresSb.append(pageLoadParsers[i].toJSArrayDecl("pageLoad[" + i + "]"));
-            pageLoadMeasuresSb.append("\n");
             pageLoadMeasuresSb.append("pageLoad[").append(i).append("].url='").append(URLS_TO_MONITOR[i]).append("';\n" );
+            pageLoadMeasuresSb.append("\n");
         }
     }
 
@@ -134,10 +139,11 @@ public class MonitorWebRenderer implements MonitoringConstants {
             return null;
         }
 
-        static void outputJsonPairsForJQPlot(PrintWriter out, String varName, float[] vals) {
+        static void outputJsonPairsForJQPlot(PrintWriter out, String varName, float[] vals, boolean removeZeroes) {
             out.print(varName); out.print("= [");
             int numBuckets = vals.length;
             for(int i=0; i<numBuckets; i++) {
+                if(vals[i]==0 && removeZeroes) continue;
                 out.print("[");
                 out.print(integers.format((int) (i*intervalBetweenTops/1000)));
                 out.print(", ");
@@ -213,7 +219,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
 
             // now output CPU load as a json;
             PrintWriter out = Util.makePrintWriter("output/topsCpuLoad.js");
-            Util.outputJsonPairsForJQPlot(out, "cpuLoad", cpuLoads);
+            Util.outputJsonPairsForJQPlot(out, "cpuLoad", cpuLoads, false);
             out.flush(); out.close();
         }
 
@@ -234,7 +240,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
 
     private class ApacheLogParser {
 
-        TimeToLine ttl = new TimeToLine(intervalBetweenTops, start, end);
+        TimeToLine ttl = new TimeToLine(intervalBetweenTops, start, end, "ApacheLog");
 
         void parse() throws Exception {
             PrintWriter out = Util.makePrintWriter("output/apacheLogs.html");
@@ -274,7 +280,8 @@ public class MonitorWebRenderer implements MonitoringConstants {
                 out.print(integers.format(lineNum));
                 if(d!=null) {
                     out.print("' time='");
-                    out.print(integers.format(ttl.convert(d)));
+                    out.print(integers.format((int) (ttl.convertToTimeDiff(d)/1000)));
+                    //out.print(integers.format(ttl.convert(d)));
                 }
                 out.print("'>");
                 out.print(line);
@@ -299,7 +306,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
     // =======================================================================================================
     private class AppservLogParser {
 
-        TimeToLine ttl = new TimeToLine(intervalBetweenTops, start, end);
+        TimeToLine ttl = new TimeToLine(intervalBetweenTops, start, end, "AppservLog");
         int threadDumpNum = 0;
 
         void parse() throws Exception {
@@ -378,7 +385,8 @@ public class MonitorWebRenderer implements MonitoringConstants {
                 out.print(integers.format(lineNum));
                 if(date!=null) {
                     out.print(" time='");
-                    out.print(ttl.convertToTimeDiff(date));
+                    String s = integers.format((int) (ttl.convertToTimeDiff(date)/1000));
+                    out.print(s);
                 }
                 out.print("'>");
                 out.print(line);
@@ -452,9 +460,10 @@ public class MonitorWebRenderer implements MonitoringConstants {
     // =======================================================================================================
     private class TimeToLine {
 
-        private TimeToLine(float granularity, long start, long end) {
+        private TimeToLine(float granularity, long start, long end, String name) {
             this.start = start;
             this.end = end;
+            this.name = name;
             this.granularity = granularity;
             this.numBuckets = (int) ((end-start)/granularity + 0.5f);
             this.buckets = new int[numBuckets];
@@ -463,13 +472,14 @@ public class MonitorWebRenderer implements MonitoringConstants {
 
         float granularity;
         long start, end;
+        String name;
         int numBuckets;
         int[] buckets;
 
         void add(Date date, int lineNum) {
             int bucketNum = convert(date);
             if(bucketNum<0 || bucketNum>=buckets.length) {
-                System.err.println("Ignoring date " + date + " being out of range (" + bucketNum + " of " + numBuckets + ").");
+                System.err.println("Ignoring date in " + name + " \"" + date + "\" being out of range (" + bucketNum + " of " + numBuckets + ").");
             } else {
                 int existing = buckets[bucketNum];
                 if(existing==-1 || existing > lineNum)
@@ -481,7 +491,8 @@ public class MonitorWebRenderer implements MonitoringConstants {
             return (int) (convertToTimeDiff(date)/granularity);
         }
         public int convertToTimeDiff(Date date) {
-            return (int) ((date.getTime()-start));
+            int r= (int) ((date.getTime()-start));
+            return r;
         }
     }
 
@@ -522,7 +533,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
                         long time = df.parse(matcher.group(1)).getTime();
                         float duration = Float.parseFloat(matcher.group(2));
                         if(time<startTime || time>=endTime) {
-                            System.err.println("No good date " + matcher.group(1) );
+                            System.err.println("No good date in PageLoad " + matcher.group(1) );
                             continue;
                         }
                         time = time-startTime;
@@ -537,7 +548,7 @@ public class MonitorWebRenderer implements MonitoringConstants {
         }
 
         public void expressArray(String varName, PrintWriter out) {
-            Util.outputJsonPairsForJQPlot(out, varName, times);
+            Util.outputJsonPairsForJQPlot(out, varName, times, true);
         }
 
         public String toJSArrayDecl(String varName) {

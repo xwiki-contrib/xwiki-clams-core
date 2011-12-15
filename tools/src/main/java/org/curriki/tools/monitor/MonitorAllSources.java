@@ -38,6 +38,7 @@ public class MonitorAllSources implements MonitoringConstants {
         new File(baseDir, "output").mkdirs();
         errorStream = new FileOutputStream("output/errors.log");
 
+
         try {
             System.out.println("--- Using appserv process number " + processNum + ".");
 
@@ -70,13 +71,14 @@ public class MonitorAllSources implements MonitoringConstants {
 
 
             System.out.println("--- Processes launched for one minute, waiting two minutes more.");
+            long startTime = System.currentTimeMillis();
             Thread.sleep(120000);
 
             fetchPageLoadTimes();
 
             // now launch stream analyzers
             System.out.println("--- Now rendering.");
-            MonitorWebRenderer.main(new String[] {processNum});
+            MonitorWebRenderer.process(startTime, startTime+duration, processNum);
 
         } finally {
             /* if(apacheLogTailer!=null) apacheLogTailer.finish();
