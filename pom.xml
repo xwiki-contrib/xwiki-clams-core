@@ -37,9 +37,9 @@
   <version>2.0-SNAPSHOT</version>
   <description>XWiki Products - Curriki - Parent POM</description>
   <scm>
-    <connection>scm:svn:http://svn.xwiki.org/svnroot/xwiki/curriki/trunk</connection>
-    <developerConnection>scm:svn:https://svn.xwiki.org/svnroot/xwiki/curriki/trunk</developerConnection>
-    <url>http://svn.xwiki.org/svnroot/xwiki/curriki/trunk</url>
+    <connection>scm:git:git://github.com/xwiki-contrib/xwiki-clams-core.git</connection>
+    <developerConnection>scm:git:git@github.com:xwiki-contrib/xwiki-clams-core.git</developerConnection>
+    <url>https://github.com/xwiki-contrib/xwiki-clams-core/tree/master/</url>
   </scm>
   <properties>
     <!-- Versions of XWiki dependencies used in Curriki modules -->
