@@ -37,9 +37,9 @@
   <version>2.1-NEXT-SNAPSHOT</version>
   <description>XWiki Products - Curriki - Parent POM</description>
   <scm>
-    <connection>scm:svn:http://svn.xwiki.org/svnroot/xwiki/curriki/branches/2.1-NEXT</connection>
-    <developerConnection>scm:svn:https://svn.xwiki.org/svnroot/xwiki/curriki/2.1-NEXT</developerConnection>
-    <url>http://svn.xwiki.org/svnroot/xwiki/curriki/2.1-NEXT</url>
+    <connection>scm:git:git://github.com/xwiki-contrib/xwiki-clams-core.git</connection>
+    <developerConnection>scm:git:git@github.com:xwiki-contrib/xwiki-clams-core.git</developerConnection>
+    <url>https://github.com/xwiki-contrib/xwiki-clams-core/tree/master/</url>
   </scm>
   <properties>
     <!-- Versions of XWiki dependencies used in Curriki modules -->
