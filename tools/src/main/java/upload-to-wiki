@@ -1,0 +1,15 @@
+#!/bin/sh
+
+## This script takes one parameter: the file-name
+## and one environment variable: AUTHHOST in the form of http://host/xwiki
+## It saves the document name at the page with its same name (less the extensions)
+## within a space of the directory it contains.
+
+commandHere="$0"
+binPath=`dirname $commandHere`
+
+
+for file in "$@" ; do
+    java -classpath $binPath UploadToWiki \
+        $file "cli upload" content "$UPLOAD_TO"
+done
