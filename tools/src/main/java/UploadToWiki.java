@@ -5,6 +5,7 @@ import org.xml.sax.helpers.DefaultHandler;
 import javax.net.ssl.*;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
+import java.lang.String;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -41,13 +42,16 @@ public class UploadToWiki {
         System.out.println("Uploading " + file + " to " + uploadTo);
 
         readAuth();
+        String userPassToken = new sun.misc.BASE64Encoder().encode((userName + ":" + password).getBytes());
 
         readFileContents();
 
-        // prepare http client
-        URL uploadURL = new URL(uploadTo + "/xwiki/bin/save/" + space + "/" + name + "?language=" + language);
+        // read modification date
+        pullResource(userPassToken, false);
+
 
         // post to /xwiki/bin/save/$spacename/$pagename?language=$language
+        URL uploadURL = new URL(uploadTo + "/xwiki/bin/saveandcontinue/" + space + "/" + name + "?language=" + language);
         HttpURLConnection conn = (HttpURLConnection) uploadURL.openConnection();
         if(conn instanceof HttpsURLConnection) {
             SSLSocketFactory factory = disableSSLValidation();
@@ -57,21 +61,30 @@ public class UploadToWiki {
         conn.setDoOutput(true);
         conn.setUseCaches(false);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        String encoding = new sun.misc.BASE64Encoder().encode((userName + ":" + password).getBytes());
-        conn.setRequestProperty("Authorization", "Basic " + encoding);
+        conn.setRequestProperty("Authorization", "Basic " + userPassToken);
+        conn.setInstanceFollowRedirects(false);
         Writer out = new OutputStreamWriter(conn.getOutputStream(), "utf-8");
         out.write(fieldName + "=" + URLEncoder.encode(fileContents, "utf-8"));
         out.flush();
         out.close();
 
-        System.out.println("-- Uploading: " + conn.getResponseCode() + " " + conn.getResponseMessage());
-
-
+        int responseCode = conn.getResponseCode();
+        String allOk = "";
+        if(responseCode == 302) {
+            URL target = new URL(uploadURL, conn.getHeaderField("Location"));
+            if(target.getPath().equals("/xwiki/bin/edit/" + space + "/" + name)) allOk = " - to correct position.";
+            else allOk = " - redirecting to " + target + " !!! ";
+        }
+        System.out.println("-- Uploading: " + conn.getResponseCode() + " " + conn.getResponseMessage() + allOk);
 
 
         // pull the XML from /xwiki/bin/view/$spacename/$pagename?xpage=xml&language=$language verify
         // post to /xwiki/bin/save/$spacename/$pagename?language=$language
-        URL readURL = new URL(uploadTo + "/xwiki/bin/view/" + space + "/" + name + "?xpage=xml&language=" + language);
+        pullResource(userPassToken, true);
+     }
+
+    private void pullResource(String encoding, boolean verify) throws Exception {
+        HttpURLConnection conn;URL readURL = new URL(uploadTo + "/xwiki/bin/view/" + space + "/" + name + "?xpage=xml&language=" + language);
         conn = (HttpURLConnection) readURL.openConnection();
         if(conn instanceof HttpsURLConnection) {
             SSLSocketFactory factory = disableSSLValidation();
@@ -105,21 +118,25 @@ public class UploadToWiki {
 
         });
 
-        System.out.println("-- Version " + version + ", modification date: " + new Date(Long.parseLong(updateDate.toString())));
+        String date = "-";
+        if(updateDate!=null && updateDate.length()>0) date= new Date(Long.parseLong(updateDate.toString())).toString();
+        System.out.println("-- Version " + version + ", modification date: " + date);
 
-        boolean verified = contentB.toString().equals(fileContents);
-        System.out.println("-- Content equals? " + verified);
-        if(!verified) {
-            File f= new File("/tmp/upload-failed-read-from-server");
-            Writer o = new OutputStreamWriter(new FileOutputStream(f),"utf-8");
-            o.write(contentB.toString());
-            o.flush(); o.close();
-            System.out.println("-- Please compare \n   " + f + " with \n   " + file);
-            System.exit(1);
+        if(verify) {
+            boolean verified = contentB.toString().equals(fileContents);
+            System.out.println("-- Content equals? " + verified);
+            if(!verified) {
+                File f= new File("/tmp/upload-failed-read-from-server");
+                Writer o = new OutputStreamWriter(new FileOutputStream(f),"utf-8");
+                o.write(contentB.toString());
+                o.flush(); o.close();
+                System.out.println("-- Please compare \n   " + f + " with \n   " + file);
+                System.exit(1);
+            }
+            int p=0;
+            // while((p=conn.getInputStream().read())!=-1) System.out.print((char) p);
         }
-        int p=0;
-        while((p=conn.getInputStream().read())!=-1) System.out.print((char) p);
-     }
+    }
 
     private File file;
     private String space, name, language = "en";

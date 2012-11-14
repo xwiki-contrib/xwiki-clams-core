@@ -13,3 +13,5 @@ for file in "$@" ; do
     java -classpath $binPath UploadToWiki \
         $file "cli upload" content "$UPLOAD_TO"
 done
+
+echo ""

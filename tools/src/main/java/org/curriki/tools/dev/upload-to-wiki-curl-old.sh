@@ -33,13 +33,10 @@ then
   exit 1
 fi
 
-echo posting to
-echo   curl -k -F comment="cli-upload." -F content="<-" "$UPLOAD_TARGET/xwiki/bin/preview/$spacename/$pagename?action_save=Save+and+continue&language=$language"
-
 ## echo UPLOAD_TARGET is $UPLOAD_TARGET
 echo Uploading to $spacename/$pagename, language $language to $UPLOAD_HOST...
 cat "$file" |
-  curl -k -F comment="cli-upload." -F content="<-" "$UPLOAD_TARGET/xwiki/bin/preview/$spacename/$pagename?action_save=Save+and+continue&language=$language"
+  curl -k -F comment="cli-upload." -F content="<-" "$UPLOAD_TARGET/xwiki/bin/save/$spacename/$pagename?language=$language"
   statusNumber="$?"
   if [ $statusNumber != 0 ];
   then
