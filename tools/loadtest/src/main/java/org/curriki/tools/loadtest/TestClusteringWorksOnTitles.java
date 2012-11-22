@@ -43,10 +43,8 @@ public class TestClusteringWorksOnTitles {
             System.exit(1);
         }
 
+        TestClusteringWorksOnTitles t = new TestClusteringWorksOnTitles();
         try {
-
-
-            TestClusteringWorksOnTitles t = new TestClusteringWorksOnTitles();
             t.baseURL = (String) argsList.get(0);
             t.userName = cli.getOptionValue("user");
             t.password = cli.getOptionValue("password");
@@ -62,6 +60,7 @@ public class TestClusteringWorksOnTitles {
             System.exit(0);
         } catch (Throwable e) {
             LOG.error("TestClusteringWorksOnTitles failed.", e);
+            if(t!=null) LOG.info("Traces would be visible on " + t.baseURL + "xwiki/bin/view/" + t.page);
             System.exit(1);
         }
     }
@@ -141,6 +140,7 @@ public class TestClusteringWorksOnTitles {
         LOG.info("-- It did arrive.");
         client.getPage(baseURL + "xwiki/bin/cancel/" + page + "?language=en");
         LOG.info("-- Cleaned up.");
+        LOG.info("Traces would be visible on " + baseURL + "xwiki/bin/view/" + page);
     }
 
 }
