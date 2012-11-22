@@ -61,6 +61,8 @@
           <groupId>jaxen</groupId></dependency>
       <dependency><artifactId>commons-io</artifactId><version>1.3.2</version>
           <groupId>org.apache.commons</groupId></dependency>
+      <dependency><artifactId>commons-cli</artifactId><version>1.2</version>
+          <groupId>commons-cli</groupId></dependency>
   </dependencies>
 
   <build>
