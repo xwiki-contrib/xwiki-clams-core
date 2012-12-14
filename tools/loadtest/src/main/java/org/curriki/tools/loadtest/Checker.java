@@ -51,7 +51,7 @@ class Checker {
             builder.append(t.getTextNormalize());
         }
         String value = builder.toString();
-        if(value==null)
+        if(value.length()==0l)
             throw new IllegalStateException("No element following pattern \"" + elementName + "\" with id \""+id+"\" has been found.");
         else if(mustFind.equals(value)) {
             // nothing to do

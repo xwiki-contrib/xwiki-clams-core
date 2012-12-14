@@ -124,20 +124,25 @@ public class TestClusteringWorksOnTitles {
 
 
 
-        if(doSleep) Thread.sleep(10000);
-        newContent = "Title Edited On " + client.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
-        LOG.info("-- Uploading \"" + newContent + "\" to " + page + ".");
-        response = client.postForm(baseURL + "xwiki/bin/save/" + page + "?language=en", "title:" + newContent, "content:" + newContent, "comment:edited-for-testing");
-        Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
+        for(int i=0; i<5; i++) {
+            if(doSleep) Thread.sleep(10000);
+            newContent = "Title Edited On " + client.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
+            LOG.info("-- Uploading \"" + newContent + "\" to " + page + ".");
+            response = client.postForm(baseURL + "xwiki/bin/save/" + page + "?language=en", "title:" + newContent, "content:" + newContent, "comment:edited-for-testing");
+            Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
 
-        if(doSleep) Thread.sleep(10000);
-        client.changeClusterNode(node1, node2);
-        LOG.info("-- Checking it arrived on other cluster node (\"" + client.getClusterNodeOfSession() + "\")");
-        LOG.info("--- Now on " + client.getClusterNodeOfSession());
-        response = client.getPage(baseURL + "xwiki/bin/edit/" + page + "?language=en");
-        doc = Checker.parseResponse(response);
-        Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent);
-        LOG.info("-- It did arrive.");
+            if(doSleep) Thread.sleep(10000);
+            client.changeClusterNode(node1, node2);
+            LOG.info("-- Checking it arrived on other cluster node (" + client.getClusterNodeOfSession() + ")");
+            LOG.info("--- Now on " + client.getClusterNodeOfSession());
+            response = client.getPage(baseURL + "xwiki/bin/edit/" + page + "?language=en");
+            doc = Checker.parseResponse(response);
+            Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent);
+            LOG.info("-- It did arrive.");
+        }
+
+
+
         client.getPage(baseURL + "xwiki/bin/cancel/" + page + "?language=en");
         LOG.info("-- Cleaned up.");
         LOG.info("Traces would be visible on " + baseURL + "xwiki/bin/view/" + page);
