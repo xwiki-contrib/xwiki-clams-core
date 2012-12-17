@@ -40,7 +40,8 @@
     <platform.version>3.5</platform.version>
   </properties>
   <modules>
-    <module>misctools</module>
+      <module>appservmonitoring</module>
+      <module>misctools</module>
     <module>loadtest</module>
   </modules>
   <build>
