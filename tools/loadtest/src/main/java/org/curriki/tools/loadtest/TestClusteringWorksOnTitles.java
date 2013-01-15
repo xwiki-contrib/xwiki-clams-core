@@ -11,6 +11,7 @@ import org.apache.http.HttpResponse;
 import org.apache.log4j.Level;
 import org.jdom2.Document;
 import org.jdom2.Element;
+import org.jdom2.JDOMException;
 import org.jdom2.filter.ElementFilter;
 
 import java.io.IOException;
@@ -31,6 +32,8 @@ public class TestClusteringWorksOnTitles {
         options.addOption("d", "delete",   false, "Delete (and empties trash) before testing (sounds buggy).");
         options.addOption("u", "user",     true,  "User-name to post to (required).");
         options.addOption("p", "password", true,  "Password for that username (required).");
+        options.addOption("b", "backEnd1", true,  "Back-end URL 1 (optional).");
+        options.addOption("c", "backEnd2", true,  "Back-end URL 2 (optional).");
         CommandLine cli = new PosixParser().parse(options, args);
         List argsList = cli.getArgList();
         if(argsList.size()!=4 || !cli.hasOption("user") || !cli.hasOption("password")) {
@@ -46,6 +49,8 @@ public class TestClusteringWorksOnTitles {
         TestClusteringWorksOnTitles t = new TestClusteringWorksOnTitles();
         try {
             t.baseURL = (String) argsList.get(0);
+            t.backEndUrl1 = cli.getOptionValue("backEnd1");
+            t.backEndUrl2 = cli.getOptionValue("backEnd2");
             t.userName = cli.getOptionValue("user");
             t.password = cli.getOptionValue("password");
             t.doDeletions = cli.hasOption("delete");
@@ -65,16 +70,18 @@ public class TestClusteringWorksOnTitles {
         }
     }
 
-    private String baseURL;
+    private String baseURL, backEndUrl1 = null, backEndUrl2 = null;
     private String userName, password;
     private String node1, node2;
     private String page = "Sandbox/TempForTestingClustering";
-    private XWikiHttpClient client;
+    private XWikiHttpClient frontEndClient, backEndClient1 = null, backEndClient2 = null;
     private boolean doDeletions = false, quiet = false, doSleep = false;
 
 
     private void init() throws IOException {
-        this.client = new XWikiHttpClient(baseURL, userName, password);
+        this.frontEndClient = new XWikiHttpClient(baseURL, userName, password);
+        if(backEndUrl1!=null) this.backEndClient1 = new XWikiHttpClient(backEndUrl1, userName, password);
+        if(backEndUrl2!=null) this.backEndClient2 = new XWikiHttpClient(backEndUrl2, userName, password);
     }
 
 
@@ -82,23 +89,25 @@ public class TestClusteringWorksOnTitles {
         HttpResponse response;
         Document doc;
 
-        client.tryLogin();
-        LOG.info("--- Now on " + client.getClusterNodeOfSession());
+        frontEndClient.tryLogin();
+        if(backEndClient1!=null) backEndClient1.tryLogin();
+        if(backEndClient2!=null) backEndClient2.tryLogin();
+        LOG.info("--- Now on " + frontEndClient.getClusterNodeOfSession());
 
         // get first to verify if there
         if(doDeletions) {
-            response = client.getPage(baseURL + "xwiki/bin/view/" + page + "?language=en");
+            response = frontEndClient.getPage(baseURL + "xwiki/bin/view/" + page + "?language=en");
             if(response.getStatusLine().getStatusCode()==200) {
                 // delete first
                 LOG.info("--- deleting earlier versions.");
-                response = client.getPage(baseURL + "xwiki/bin/delete/"+page+"?confirm=1&language=en");
+                response = frontEndClient.getPage(baseURL + "xwiki/bin/delete/"+page+"?confirm=1&language=en");
                 doc = Checker.parseResponse(response);
                 Checker.checkDocumentHas("LEGEND", null, doc, "Delete");
                 for(Element elt: doc.getRootElement().getDescendants(new ElementFilter("A",Checker.HTMLNS))) {
                     String href = elt.getAttributeValue("href");
                     if(href!=null && href.startsWith("/xwiki/bin/delete/" + page) && href.contains("id=")) {
                         LOG.info("---- deleting: " + href);
-                        client.getPage(baseURL + href.substring(1));
+                        frontEndClient.getPage(baseURL + href.substring(1));
                     }
                 }
             } else {
@@ -108,44 +117,65 @@ public class TestClusteringWorksOnTitles {
         if(doSleep) Thread.sleep(10000);
 
 
-        String newContent = "Title Edited On " + client.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
-        LOG.info("-- Uploading \"" + newContent + "\" to "+ page +".");
-        response = client.postForm(baseURL + "xwiki/bin/save/" + page + "?language=en", "title:" + newContent, "content:" + newContent, "comment:edited");
-        Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
+        String newContent = "Title Edited On " + frontEndClient.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
+        uploadContent(frontEndClient, newContent, newContent);
+
         if(doSleep) Thread.sleep(10000);
 
-        LOG.info("-- Checking it arrived on other cluster node.");
-        client.changeClusterNode(node1, node2);
-        LOG.info("--- Now on " + client.getClusterNodeOfSession());
-        response = client.getPage(baseURL + "xwiki/bin/edit/" + page);
-        doc = Checker.parseResponse(response);
-        Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent); // [@name='content']
-        LOG.info("-- It did arrive.");
-
-
+        checkItArrivedOn(newContent, frontEndClient, backEndClient2, node1, node2);
 
         for(int i=0; i<5; i++) {
+            LOG.info("");
+            LOG.info("- STEP: " + i);
             if(doSleep) Thread.sleep(10000);
-            newContent = "Title Edited On " + client.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
-            LOG.info("-- Uploading \"" + newContent + "\" to " + page + ".");
-            response = client.postForm(baseURL + "xwiki/bin/save/" + page + "?language=en", "title:" + newContent, "content:" + newContent, "comment:edited-for-testing");
-            Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
-
-            if(doSleep) Thread.sleep(10000);
-            client.changeClusterNode(node1, node2);
-            LOG.info("-- Checking it arrived on other cluster node (" + client.getClusterNodeOfSession() + ")");
-            LOG.info("--- Now on " + client.getClusterNodeOfSession());
-            response = client.getPage(baseURL + "xwiki/bin/edit/" + page + "?language=en");
-            doc = Checker.parseResponse(response);
-            Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent);
-            LOG.info("-- It did arrive.");
+            newContent = "Title Edited On " + frontEndClient.getClusterNodeOfSession() + " " + ((int) (Math.random()*10000));
+            if(i % 2 == 1) {
+                uploadContent(frontEndClient, newContent, newContent);
+                if(doSleep) Thread.sleep(10000);
+                checkItArrivedOn(newContent, frontEndClient, backEndClient2, node1, node2);
+            } else {
+                uploadContent(frontEndClient, newContent, newContent);
+                if(doSleep) Thread.sleep(10000);
+                checkItArrivedOn(newContent, frontEndClient, backEndClient1, node2, node1);
+            }
         }
 
-
-
-        client.getPage(baseURL + "xwiki/bin/cancel/" + page + "?language=en");
+        frontEndClient.getPage(baseURL + "xwiki/bin/cancel/" + page + "?language=en");
         LOG.info("-- Cleaned up.");
         LOG.info("Traces would be visible on " + baseURL + "xwiki/bin/view/" + page);
     }
+
+    private void checkItArrivedOn(String newContent, XWikiHttpClient frontEndClient, XWikiHttpClient backEndClient, String oldNode, String targetNode) throws IOException, JDOMException {
+        LOG.info("-- Checking it arrived on other cluster node ("+targetNode+").");
+        frontEndClient.changeClusterNode(oldNode, targetNode);
+        HttpResponse response;
+        Document doc;
+        response = frontEndClient.getPage(baseURL + "xwiki/bin/edit/" + page);
+        LOG.info("--- Now on " + frontEndClient.getClusterNodeOfSession());
+        doc = Checker.parseResponse(response);
+        Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent); // [@name='content']
+        String comment = Checker.findCommentStartingWith(doc, "generated on ");
+        if(comment==null || !comment.toLowerCase().startsWith("generated on " + targetNode))
+            LOG.warn("--- wrong node delivered it: " + comment);
+        else
+            LOG.info("--- delivered from correct node: " + targetNode);
+        LOG.info("--- It did arrive (front).");
+        if(backEndClient!=null) {
+            response = backEndClient.getPage(backEndUrl2+ "xwiki/bin/edit/" + page);
+            doc = Checker.parseResponse(response);
+            Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent); // [@name='content']
+            LOG.info("--- It did arrive (back).");
+        }
+
+    }
+
+    private void uploadContent(XWikiHttpClient client, String title, String newContent) throws Exception {
+        HttpResponse response;
+        LOG.info("-- Uploading \"" + newContent + "\" to "+ page +".");
+        response = client.postForm(baseURL + "xwiki/bin/save/" + page + "?language=en", "title:" + newContent, "content:" + newContent, "comment:edited");
+        Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
+        LOG.info("--- redirected properly.");
+    }
+
 
 }

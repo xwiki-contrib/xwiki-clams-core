@@ -35,12 +35,7 @@
   <description>XWiki Products - Curriki - Tools - AppServ Montoring</description>
   
   <dependencies>
-    <dependency>
-      <groupId>org.curriki</groupId>
-      <artifactId>xwiki-corecurriki</artifactId>
-      <version>${platform.core.version}</version>
-      <scope>provided</scope>
-    </dependency>
+
     <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>

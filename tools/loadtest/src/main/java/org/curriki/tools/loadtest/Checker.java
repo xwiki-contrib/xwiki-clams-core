@@ -9,10 +9,15 @@ import org.jdom2.filter.ContentFilter;
 import org.jdom2.filter.ElementFilter;
 import org.jdom2.filter.Filter;
 import org.jdom2.input.SAXBuilder;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
 
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  */
@@ -20,6 +25,7 @@ class Checker {
 
     private static Log LOG = LogFactory.getLog(Checker.class);
     static Namespace HTMLNS = Namespace.getNamespace("http://www.w3.org/1999/xhtml");
+    static Pattern generatedOn = Pattern.compile(".*<!-- (generated on [^\\n\\r]*) -->.*");
 
     static Document parseResponse(HttpResponse x) throws IOException, JDOMException {
 
@@ -29,7 +35,16 @@ class Checker {
 
         SAXBuilder builder = new SAXBuilder("org.cyberneko.html.parsers.SAXParser");
         builder.setProperty("http://cyberneko.org/html/properties/default-encoding","UTF-8");
-        return builder.build(new StringReader(content));
+
+        Document doc = builder.build(new StringReader(content));
+
+        Matcher m = generatedOn.matcher(content);
+        if(m.find()) {
+            //LOG.info(" ==== found generator: " + m.group(1));
+            doc.getRootElement().addContent(new Comment(m.group(1)));
+        }
+
+        return doc;
     }
 
     static void checkDocumentHas(String elementName, String id, Document doc, String mustFind) {
@@ -42,23 +57,39 @@ class Checker {
                 found = elt; break;
             }
         }
-
-        // compute descendant texts
         StringBuilder builder = new StringBuilder();
-        it = found.getDescendants(new ContentFilter(ContentFilter.TEXT));
-        while(it.hasNext()) {
-            Text t = (Text) it.next();
-            builder.append(t.getTextNormalize());
+        if(found!=null) {
+            // compute descendant texts
+            it = found.getDescendants(new ContentFilter(ContentFilter.TEXT));
+            while(it.hasNext()) {
+                Text t = (Text) it.next();
+                builder.append(t.getTextNormalize());
+            }
         }
+
         String value = builder.toString();
-        if(value.length()==0l)
+        if(value.length()==0l) {
+            LOG.warn(" ================= wrong content received ================================================= ");
+            LOG.warn(new XMLOutputter(Format.getPrettyFormat()).outputString(doc));
+            LOG.warn(" ================= /wrong content received ================================================= ");
             throw new IllegalStateException("No element following pattern \"" + elementName + "\" with id \""+id+"\" has been found.");
-        else if(mustFind.equals(value)) {
+        } else if(mustFind.equals(value)) {
             // nothing to do
             LOG.info("----  Expected text is found.");
         } else {
             throw new IllegalStateException("Element's text differs: \n  Expected: \"" + mustFind + "\"\n  But found: \"" + value + "\"." );
         }
+    }
+
+    static String findCommentStartingWith(Document doc, String prefix) {
+        Iterator comments = doc.getRootElement().getDescendants(new ContentFilter(ContentFilter.COMMENT));
+        while(comments.hasNext()) {
+            Comment comment = (Comment) comments.next();
+            if(comment!=null && comment.getText()!=null && comment.getText().startsWith(prefix)) {
+                return comment.getText();
+            }
+        }
+        return null;
     }
 
     static void assertResponseIsRedirect(HttpResponse x, String location) {

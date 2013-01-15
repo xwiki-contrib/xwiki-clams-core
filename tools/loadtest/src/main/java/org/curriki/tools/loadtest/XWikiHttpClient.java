@@ -160,7 +160,8 @@ public class XWikiHttpClient extends DefaultHttpClient {
             stdCookie.setSecure(true);
             super.getCookieStore().addCookie(stdCookie);
         } else if (value.endsWith(node2)) {
-            LOG.info("-- Changing cookie to " + node1 + ".");
+            LOG.info("---- No need to change cookie.");
+            /* LOG.info("-- Changing cookie to " + node1 + ".");
             returnValue = node1;
             BasicClientCookie2 stdCookie = new BasicClientCookie2("JSESSIONID", value.substring(0, p)+node1);
             stdCookie.setVersion(1);
@@ -168,7 +169,7 @@ public class XWikiHttpClient extends DefaultHttpClient {
             stdCookie.setPorts(new int[] {url.getPort()});
             stdCookie.setPath("/");
             stdCookie.setSecure(true);
-            super.getCookieStore().addCookie(stdCookie);
+            super.getCookieStore().addCookie(stdCookie); */
         } else throw new IllegalStateException("Cookie JSESSIONID=\"" + value + "\" is not one of the node-routes.");
         return returnValue;
     }
