@@ -9,12 +9,15 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.http.HttpResponse;
 import org.apache.log4j.Level;
+import org.apache.log4j.helpers.ISO8601DateFormat;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.jdom2.filter.ElementFilter;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -32,8 +35,10 @@ public class TestClusteringWorksOnTitles {
         options.addOption("d", "delete",   false, "Delete (and empties trash) before testing (sounds buggy).");
         options.addOption("u", "user",     true,  "User-name to post to (required).");
         options.addOption("p", "password", true,  "Password for that username (required).");
+        options.addOption("d", "debug",    false,  "Detail all communications.");
         options.addOption("b", "backEnd1", true,  "Back-end URL 1 (optional).");
         options.addOption("c", "backEnd2", true,  "Back-end URL 2 (optional).");
+        options.addOption("w", "witness",  true,  "Witness file (outputs json, optional).");
         CommandLine cli = new PosixParser().parse(options, args);
         List argsList = cli.getArgList();
         if(argsList.size()!=4 || !cli.hasOption("user") || !cli.hasOption("password")) {
@@ -56,16 +61,20 @@ public class TestClusteringWorksOnTitles {
             t.doDeletions = cli.hasOption("delete");
             t.doSleep = cli.hasOption("sleep");
             t.quiet = cli.hasOption("quiet");
+            t.witnessFile = cli.getOptionValue("witness");
             if(t.quiet) ((Log4JLogger) LOG).getLogger().getParent().setLevel(Level.ERROR);
+            if(cli.hasOption("debug")) ((Log4JLogger) LOG).getLogger().getParent().setLevel(Level.DEBUG);
             t.page = (String) argsList.get(1);
             t.node1 = (String) argsList.get(2);
             t.node2 = (String) argsList.get(3);
             t.init();
             t.run();
+            t.notifyOk(true);
             System.exit(0);
         } catch (Throwable e) {
             LOG.error("TestClusteringWorksOnTitles failed.", e);
             if(t!=null) LOG.info("Traces would be visible on " + t.baseURL + "xwiki/bin/view/" + t.page);
+            t.notifyOk(false);
             System.exit(1);
         }
     }
@@ -73,6 +82,7 @@ public class TestClusteringWorksOnTitles {
     private String baseURL, backEndUrl1 = null, backEndUrl2 = null;
     private String userName, password;
     private String node1, node2;
+    private String witnessFile;
     private String page = "Sandbox/TempForTestingClustering";
     private XWikiHttpClient frontEndClient, backEndClient1 = null, backEndClient2 = null;
     private boolean doDeletions = false, quiet = false, doSleep = false;
@@ -96,18 +106,18 @@ public class TestClusteringWorksOnTitles {
 
         // get first to verify if there
         if(doDeletions) {
-            response = frontEndClient.getPage(baseURL + "xwiki/bin/view/" + page + "?language=en");
+            response = frontEndClient.getPage("/xwiki/bin/view/" + page + "?language=en");
             if(response.getStatusLine().getStatusCode()==200) {
                 // delete first
                 LOG.info("--- deleting earlier versions.");
-                response = frontEndClient.getPage(baseURL + "xwiki/bin/delete/"+page+"?confirm=1&language=en");
+                response = frontEndClient.getPage("/xwiki/bin/delete/"+page+"?confirm=1&language=en");
                 doc = Checker.parseResponse(response);
                 Checker.checkDocumentHas("LEGEND", null, doc, "Delete");
                 for(Element elt: doc.getRootElement().getDescendants(new ElementFilter("A",Checker.HTMLNS))) {
                     String href = elt.getAttributeValue("href");
                     if(href!=null && href.startsWith("/xwiki/bin/delete/" + page) && href.contains("id=")) {
                         LOG.info("---- deleting: " + href);
-                        frontEndClient.getPage(baseURL + href.substring(1));
+                        frontEndClient.getPage(href.substring(1));
                     }
                 }
             } else {
@@ -140,7 +150,7 @@ public class TestClusteringWorksOnTitles {
             }
         }
 
-        frontEndClient.getPage(baseURL + "xwiki/bin/cancel/" + page + "?language=en");
+        frontEndClient.getPage("/xwiki/bin/cancel/" + page + "?language=en");
         LOG.info("-- Cleaned up.");
         LOG.info("Traces would be visible on " + baseURL + "xwiki/bin/view/" + page);
     }
@@ -150,21 +160,21 @@ public class TestClusteringWorksOnTitles {
         frontEndClient.changeClusterNode(oldNode, targetNode);
         HttpResponse response;
         Document doc;
-        response = frontEndClient.getPage(baseURL + "xwiki/bin/edit/" + page);
+        response = frontEndClient.getPage("/xwiki/bin/edit/" + page);
         LOG.info("--- Now on " + frontEndClient.getClusterNodeOfSession());
         doc = Checker.parseResponse(response);
         Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent); // [@name='content']
         String comment = Checker.findCommentStartingWith(doc, "generated on ");
         if(comment==null || !comment.toLowerCase().startsWith("generated on " + targetNode))
-            LOG.warn("--- wrong node delivered it: " + comment);
+            LOG.error("--- wrong node delivered it: " + comment);
         else
             LOG.info("--- delivered from correct node: " + targetNode);
-        LOG.info("--- It did arrive (front).");
+        LOG.info("--- It did arrive (front "+ frontEndClient+").");
         if(backEndClient!=null) {
-            response = backEndClient.getPage(backEndUrl2+ "xwiki/bin/edit/" + page);
+            response = backEndClient.getPage("/xwiki/bin/edit/" + page);
             doc = Checker.parseResponse(response);
             Checker.checkDocumentHas("TEXTAREA", "content", doc, newContent); // [@name='content']
-            LOG.info("--- It did arrive (back).");
+            LOG.info("--- It did arrive (back, " + backEndClient + ").");
         }
 
     }
@@ -176,6 +186,22 @@ public class TestClusteringWorksOnTitles {
         Checker.assertResponseIsRedirect(response, baseURL + "xwiki/bin/view/" + page);
         LOG.info("--- redirected properly.");
     }
+
+    private void notifyOk(boolean result) {
+        if(witnessFile!=null && witnessFile.length()>0) {
+            File file = new File(witnessFile);
+            try {
+                org.apache.commons.io.FileUtils.writeStringToFile(file,
+                        "window.clusteringCheckResult = [" +
+                                "date: " + new ISO8601DateFormat().format(new Date()) + ", " +
+                                "success: " + result +
+                        "]");
+            } catch (IOException e) {
+                LOG.error("Can't write to \"" + file + "\". No witness.", e);
+            }
+        }
+    }
+
 
 
 }

@@ -31,12 +31,12 @@ public class XWikiHttpClient extends DefaultHttpClient {
 
     private static Log LOG = LogFactory.getLog(XWikiHttpClient.class);
 
-    public XWikiHttpClient(String url, String userName, String userPassword) throws IOException {
+    public XWikiHttpClient(String baseURL, String userName, String userPassword) throws IOException {
         super(new ThreadSafeClientConnManager());
-        this.url = new URL(url);
+        this.baseURL = new URL(baseURL);
         this.userName = userName; this.userPassword = userPassword;
 
-        this.host = new HttpHost(this.url.getHost(), this.url.getPort(), this.url.getProtocol());
+        this.host = new HttpHost(this.baseURL.getHost(), this.baseURL.getPort(), this.baseURL.getProtocol());
         this.localcontext = new BasicHttpContext();
         ((ThreadSafeClientConnManager) super.getConnectionManager()).setDefaultMaxPerRoute(100);
         super.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.BROWSER_COMPATIBILITY);
@@ -44,7 +44,7 @@ public class XWikiHttpClient extends DefaultHttpClient {
         super.getParams().setParameter(ClientPNames.HANDLE_REDIRECTS, Boolean.FALSE);
     }
 
-    final URL url;
+    final URL baseURL;
     final String userName, userPassword;
     final HttpHost host;
     final HttpContext localcontext;
@@ -65,8 +65,9 @@ public class XWikiHttpClient extends DefaultHttpClient {
         StatusLine status = null;
         HttpResponse response = null;
         try {
-            LOG.debug("Logging in.");
-            HttpPost loginPost = new HttpPost(new URL(url,"/xwiki/bin/loginsubmit/XWiki/XWikiLogin?xredirect=%2Fxwiki%2Fbin%2Fview%2FSearch2%2FUserName%3Fxpage%3Dplain&xpage=plain").toExternalForm());
+            String loginURL = new URL(baseURL,"/xwiki/bin/loginsubmit/XWiki/XWikiLogin?xredirect=%2Fxwiki%2Fbin%2Fview%2FSearch2%2FUserName%3Fxpage%3Dplain&xpage=plain").toExternalForm();
+            LOG.info("--- Logging in (" + loginURL + ").");
+            HttpPost loginPost = new HttpPost(loginURL);
             List<NameValuePair> formparams = new ArrayList<NameValuePair>();
             formparams.add(new BasicNameValuePair("j_username", "solr"));
             formparams.add(new BasicNameValuePair("j_password",  "currikiSearchFast"));
@@ -93,7 +94,7 @@ public class XWikiHttpClient extends DefaultHttpClient {
     }
 
     public String verifyLoggedInUserName() throws IOException {
-        String u= new URL(url,"/xwiki/bin/view/Search2/UserName?xpage=plain").toExternalForm();
+        String u= new URL(baseURL,"/xwiki/bin/view/Search2/UserName?xpage=plain").toExternalForm();
         HttpResponse response = super.execute(host, new HttpGet(u), localcontext);
         StatusLine status = response.getStatusLine();
         if(status.getStatusCode()!=200) return status.toString();
@@ -154,8 +155,8 @@ public class XWikiHttpClient extends DefaultHttpClient {
             returnValue = node2;
             BasicClientCookie2 stdCookie = new BasicClientCookie2("JSESSIONID", value.substring(0, p)+node2);
             stdCookie.setVersion(1);
-            stdCookie.setDomain(url.getPath());
-            stdCookie.setPorts(new int[] {url.getPort()});
+            stdCookie.setDomain(baseURL.getPath());
+            stdCookie.setPorts(new int[] {baseURL.getPort()});
             stdCookie.setPath("/");
             stdCookie.setSecure(true);
             super.getCookieStore().addCookie(stdCookie);
@@ -187,6 +188,22 @@ public class XWikiHttpClient extends DefaultHttpClient {
     }
 
     public HttpResponse getPage(String url) throws IOException {
-        return super.execute(new HttpGet(url));
+        url = new URL(baseURL, url).toExternalForm();
+        HttpResponse response = super.execute(new HttpGet(url));
+        int count = 0;
+        while(response.getStatusLine().getStatusCode()==302) {
+            String location = response.getHeaders("Location")[0].getValue();
+            if(location.contains("/xwiki/bin/login") && count++<5) {
+                LOG.info("Redirected to " + response.getHeaders("Location")[0].getValue());
+                try {Thread.currentThread().sleep(1000);} catch(InterruptedException x) {}
+                this.tryLogin();
+                response = super.execute(new HttpGet(url));
+            } else break;
+        }
+        return response;
+    }
+
+    public String toString() {
+        return "XWikiHttpClient@" + hashCode() + " [" + baseURL + "]";
     }
 }
