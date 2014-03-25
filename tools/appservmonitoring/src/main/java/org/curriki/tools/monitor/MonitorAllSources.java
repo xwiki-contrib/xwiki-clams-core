@@ -49,12 +49,12 @@ public class MonitorAllSources implements MonitoringConstants {
             apacheLogTailer.start();
 
             appservTailer = new MyBackgroundProcess("appServerTailer",
-                    "ssh appserv@prod-app ./shorttail.sh /appserv/nohup.out 60",
+                    "ssh appserv@failover-app ./shorttail.sh /appserv/nohup.out 60",
                     "appservLogs.txt", duration);
             appservTailer.start();
 
             topCollector =  new MyBackgroundProcess("topCollector",
-                    "ssh appserv@prod-app /usr/sfw/bin/top -U appserv -s 1 -n -d 60",
+                    "ssh appserv@failover-app /usr/sfw/bin/top -U appserv -s 1 -n -d 60",
                     "tops.txt", duration);
             topCollector.start();
 
@@ -67,7 +67,7 @@ public class MonitorAllSources implements MonitoringConstants {
             monitorCacheEviction.start();
 
             // send regular QUIT signals
-            threadDumpRequestor = new RegularLauncher("ssh appserv@prod-app /appserv/threadDump.sh", 12, 5000, null, null);
+            threadDumpRequestor = new RegularLauncher("ssh appserv@failover-app /appserv/threadDump.sh", 12, 5000, null, null);
 
 
             System.out.println("--- Processes launched for one minute, waiting one minute more.");
@@ -230,7 +230,7 @@ class MonitorCacheEviction extends Thread {
     NumberFormat numForm = new DecimalFormat("####.###");
 
     public void run() {
-        GetMethod get = new GetMethod("http://www.curriki.org/xwiki/bin/view/CurrikiCode/CacheMonitor");
+        GetMethod get = new GetMethod("http://failover-app:8080/xwiki/bin/view/CurrikiCode/CacheMonitor");
         String prefix = "<li>eviction rate (ev/s):";
         startTime = System.currentTimeMillis();
 

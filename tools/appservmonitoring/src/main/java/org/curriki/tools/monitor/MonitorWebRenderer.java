@@ -73,6 +73,8 @@ public class MonitorWebRenderer implements MonitoringConstants {
         values.put("maxCpuLoad", integers.format(Math.round(mwr.maxCpuLoad / 100) * 100 + 100));
         values.put("sourcesLinks", sourcesLinks.toString());
         values.put("pageLoadMeasures", mwr.pageLoadMeasuresSb.toString());
+        values.put("nextURL", directoryNameDf.format(new Date(start+5L*60*1000)));
+        values.put("prevURL", directoryNameDf.format(new Date(start-5L*60*1000)));
         Class clz = MonitorWebRenderer.class;
         Util.substituteStream(
                 clz.getResourceAsStream("monitorResources/monitor-curriki-template.html"),

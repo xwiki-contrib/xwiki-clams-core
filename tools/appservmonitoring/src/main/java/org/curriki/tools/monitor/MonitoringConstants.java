@@ -16,6 +16,6 @@ public interface MonitoringConstants {
         PAGE_LOAD_DATEFORMAT_PATTERN = "dd/MM/yyyy:HH:mm:ss Z",
         APACHE_LOG_DATEFORMAT="dd/MMM/yyyy:HH:mm:ss Z",
         APPSERV_LOG_DATEFORMAT="yyyy-MM-dd'T'HH:mm:ss.SSSZ",
-        DIRNAME_DATEFORMAT = "yyyy-MM-dd_HH-mm-ss-SSS_Z";
+        DIRNAME_DATEFORMAT = "yyyy-MM-dd_HH-mm"; // -ss-SSS_Z
 
 }
