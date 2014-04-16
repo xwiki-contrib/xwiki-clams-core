@@ -43,6 +43,7 @@
       <module>appservmonitoring</module>
       <module>misctools</module>
     <module>loadtest</module>
+    <module>loganalyzer</module>
   </modules>
   <build>
 
