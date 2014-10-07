@@ -35,7 +35,7 @@ public class LogCollector {
     private long lastSeenLine = 0;
     private boolean debug;
     private static final long ONLY_CHANGE_EVERY_X_MS = 5000;
-    private static final int LARGEST_QUEUE_SIZE = 8192;
+    private static final int LARGEST_QUEUE_SIZE = 65536;
 
 
     private Tailer createTailer(final File f, boolean resume) {

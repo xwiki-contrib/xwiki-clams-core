@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ *
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.curriki</groupId>
+    <artifactId>curriki-tools-parent</artifactId>
+    <version>2.1-NEXT-SNAPSHOT</version>
+  </parent>
+  <artifactId>xclams-tools-loganalyzer</artifactId>
+  <name>XWiki Products - XCLAMS - Tools - LogAnalyzer</name>
+  <packaging>jar</packaging>
+  <description>XWiki Products - XCLAMS - Tools - LogAnalyzer</description>
+  <dependencies>
+        <dependency><artifactId>junit</artifactId><version>4.4</version>
+            <groupId>junit</groupId>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.12</version>
+        </dependency>
+      <dependency><artifactId>commons-io</artifactId><version>2.4</version>
+          <groupId>commons-io</groupId></dependency>
+      <dependency><artifactId>commons-cli</artifactId><version>1.2</version>
+          <groupId>commons-cli</groupId></dependency>
+      <dependency><artifactId>uasparser</artifactId><version>0.6.0</version>
+          <groupId>cz.mallat.uasparser</groupId></dependency>
+  </dependencies>
+
+  <build>
+      <plugins>
+          <plugin>
+              <artifactId>maven-assembly-plugin</artifactId>
+              <version>2.3</version>
+              <configuration>
+                  <archive><manifest><mainClass>org.curriki.tools.loganalyzer.LogAnalyzer</mainClass></manifest></archive>
+                  <descriptorRefs><descriptorRef>jar-with-dependencies</descriptorRef></descriptorRefs>
+                  <finalName>loganalyzer</finalName>
+                  <appendAssemblyId>false</appendAssemblyId>
+              </configuration>
+              <executions><execution><id>make-assembly</id>
+                      <phase>package</phase>
+                      <goals><goal>single</goal></goals>
+                  </execution></executions>
+          </plugin>
+      </plugins>
+  </build>
+</project>
